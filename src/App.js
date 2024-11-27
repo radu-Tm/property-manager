@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { AuthComponent } from './components/auth/AuthComponent';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
 import { Button } from './components/ui/button';
 import { Building2, UserCircle, Menu, Bed, Bath, Square, ArrowRight } from 'lucide-react';
-
+import { signOut } from 'aws-amplify/auth';
 // Header Component
-const Header = () => (
+const Header = ({ onSignOut }) => (
   <div className="w-full bg-white border-b shadow-sm">
     <div className="container mx-auto px-4">
       <div className="flex h-16 items-center justify-between">
@@ -20,9 +22,9 @@ const Header = () => (
         </div>
         
         <div className="flex items-center space-x-4">
-          <Button variant="outline" className="hidden md:flex">
+          <Button variant="outline" className="hidden md:flex" onClick={onSignOut}>
             <UserCircle className="h-5 w-5 mr-2" />
-            Autentificare
+            Deconectare
           </Button>
           <Button variant="ghost" className="md:hidden">
             <Menu className="h-6 w-6" />
@@ -66,14 +68,31 @@ const PropertyCard = ({ proprietate }) => (
   </Card>
 );
 
-// Main App Component
 const App = () => {
-  const [proprietati, setProprietati] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [proprietati, setProprietati] = useState([]);
 
-  // Simulăm datele pentru exemplu
   useEffect(() => {
-    // Aici vei face fetch-ul real la API
+    checkAuthState();
+    if (isAuthenticated) {
+      fetchProprietati();
+    }
+  }, [isAuthenticated]);
+
+  const checkAuthState = async () => {
+    try {
+      await getCurrentUser();
+      setIsAuthenticated(true);
+    } catch (err) {
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchProprietati = async () => {
+    // Date mock pentru exemplu
     const mockData = [
       {
         id: '1',
@@ -104,29 +123,41 @@ const App = () => {
       }
     ];
 
-    setTimeout(() => {
-      setProprietati(mockData);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    setProprietati(mockData);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Error signing out: ', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthComponent onAuthSuccess={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onSignOut={handleSignOut} />
       <main>
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {proprietati.map((proprietate) => (
+              <PropertyCard key={proprietate.id} proprietate={proprietate} />
+            ))}
           </div>
-        ) : (
-          <div className="container mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {proprietati.map((proprietate) => (
-                <PropertyCard key={proprietate.id} proprietate={proprietate} />
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
       </main>
     </div>
   );
