@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
-import { AuthComponent } from './components/auth/AuthComponent';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './components/ui/card';
-import { Button } from './components/ui/button';
-import { Building2, UserCircle, Menu, Bed, Bath, Square, ArrowRight } from 'lucide-react';
+import React from 'react';
 import { signOut } from 'aws-amplify/auth';
+import { AuthComponent } from './components/auth/AuthComponent';
+import { Button } from './components/ui/button';
+import { Building2, UserCircle, Menu } from 'lucide-react';
+import ProprietarDashboard from './components/dashboard/ProprietarDashboard';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ChiriasDashboard from './components/dashboard/ChiriasDashboard';
+
 // Header Component
 const Header = ({ onSignOut }) => (
   <div className="w-full bg-white border-b shadow-sm">
@@ -34,102 +36,21 @@ const Header = ({ onSignOut }) => (
     </div>
   </div>
 );
-
-// PropertyCard Component
-const PropertyCard = ({ proprietate }) => (
-  <Card className="w-full hover:shadow-lg transition-shadow">
-    <CardHeader>
-      <CardTitle className="flex items-center space-x-2">
-        <Building2 className="h-5 w-5 text-blue-600" />
-        <span>{proprietate.nume}</span>
-      </CardTitle>
-      <CardDescription>{proprietate.adresa}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="flex items-center space-x-2">
-          <Bed className="h-4 w-4 text-gray-500" />
-          <span>{proprietate.dormitoare} dormitoare</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Bath className="h-4 w-4 text-gray-500" />
-          <span>{proprietate.bai} băi</span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Square className="h-4 w-4 text-gray-500" />
-          <span>{proprietate.suprafata} m²</span>
-        </div>
-      </div>
-      <Button variant="outline" className="w-full">
-        Vezi detalii
-        <ArrowRight className="h-4 w-4 ml-2" />
-      </Button>
-    </CardContent>
-  </Card>
-);
-
-const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [proprietati, setProprietati] = useState([]);
-
-  useEffect(() => {
-    checkAuthState();
-    if (isAuthenticated) {
-      fetchProprietati();
-    }
-  }, [isAuthenticated]);
-
-  const checkAuthState = async () => {
-    try {
-      await getCurrentUser();
-      setIsAuthenticated(true);
-    } catch (err) {
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchProprietati = async () => {
-    // Date mock pentru exemplu
-    const mockData = [
-      {
-        id: '1',
-        nume: 'Proprietate 1',
-        tip: 'Casă',
-        adresa: 'Str. Exemplu 1, nr. 10, București',
-        dormitoare: 4,
-        bai: 3,
-        suprafata: 120.5
-      },
-      {
-        id: '2',
-        nume: 'Proprietate 2',
-        tip: 'Apartament',
-        adresa: 'Str. Exemplu 2, nr. 20, București',
-        dormitoare: 3,
-        bai: 2,
-        suprafata: 75.3
-      },
-      {
-        id: '3',
-        nume: 'Proprietate 3',
-        tip: 'Comercial',
-        adresa: 'Str. Exemplu 3, nr. 30, București',
-        dormitoare: 0,
-        bai: 1,
-        suprafata: 250
-      }
-    ];
-
-    setProprietati(mockData);
-  };
+const handleSignOut = async () => {
+  try {
+    await signOut();
+    window.location.reload(); // Forțăm refresh după logout
+  } catch (error) {
+    console.error('Error signing out: ', error);
+  }
+};
+const AppContent = () => {
+  const { user, loading, checkAuth } = useAuth();
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      setIsAuthenticated(false);
+      await signOut({ global: true }); // am adăugat global: true
+      window.location.reload(); // forțăm refresh după logout
     } catch (error) {
       console.error('Error signing out: ', error);
     }
@@ -143,24 +64,29 @@ const App = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <AuthComponent onAuthSuccess={() => setIsAuthenticated(true)} />;
+  if (!user) {
+    return <AuthComponent />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onSignOut={handleSignOut} />
       <main>
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {proprietati.map((proprietate) => (
-              <PropertyCard key={proprietate.id} proprietate={proprietate} />
-            ))}
-          </div>
-        </div>
+        {user.userType === 'proprietar' ? (
+          <ProprietarDashboard />
+        ) : (
+          <ChiriasDashboard />
+        )}
       </main>
     </div>
   );
 };
+
+// Wrapper component pentru AuthProvider
+const App = () => (
+  <AuthProvider>
+    <AppContent />
+  </AuthProvider>
+);
 
 export default App;

@@ -14,17 +14,18 @@ export const AuthComponent = (props) => {
   const [error, setError] = useState('');
 
   const handleSignIn = async (e) => {
-    e.preventDefault();
-    try {
-      await signIn({
-        username: formData.email,
-        password: formData.password,
-      });
-      props.onAuthSuccess();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  e.preventDefault();
+  try {
+    await signIn({
+      username: formData.email,
+      password: formData.password,
+    });
+    // După autentificare, reîncărcăm pagina în loc să folosim callback-ul
+    window.location.reload();
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const handleSignUp = async (e) => {
     e.preventDefault();
