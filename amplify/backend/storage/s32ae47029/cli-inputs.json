@@ -1,0 +1,14 @@
+{
+  "resourceName": "s32ae47029",
+  "policyUUID": "2ae47029",
+  "bucketName": "propertymanager7b909536351f4ea8bce232dd987cdc8a",
+  "storageAccess": "authAndGuest",
+  "guestAccess": [
+    "CREATE_AND_UPDATE"
+  ],
+  "authAccess": [
+    "CREATE_AND_UPDATE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
