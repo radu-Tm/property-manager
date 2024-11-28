@@ -187,7 +187,7 @@ const PropertyDetails = () => {
                 {property.chiriiColectate.map((plata, index) => (
                   <div key={index} className="flex justify-between p-2 border-b">
                     <span>{new Date(plata.data).toLocaleDateString('ro-RO')}</span>
-                    <span className="font-medium">{plata.suma} RON</span>
+                    <span className="font-medium">{parseFloat(plata.suma).toFixed(2)} RON</span>
                   </div>
                 ))}
               </div>
