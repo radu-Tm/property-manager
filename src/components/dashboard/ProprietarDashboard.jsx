@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Building2, Bed, Bath, Square, ArrowRight } from 'lucide-react';
 import AddPropertyForm from './AddPropertyForm';
+import { useNavigate } from 'react-router-dom';
 
 const client = generateClient();
 
@@ -27,37 +28,45 @@ const listProprietati = /* GraphQL */ `
  }
 `;
 
-const PropertyCard = ({ proprietate }) => (
- <Card className="w-full hover:shadow-lg transition-shadow">
-   <CardHeader>
-     <CardTitle className="flex items-center space-x-2">
-       <Building2 className="h-5 w-5 text-blue-600" />
-       <span>{proprietate.nume}</span>
-     </CardTitle>
-     <CardDescription>{proprietate.adresa}</CardDescription>
-   </CardHeader>
-   <CardContent>
-     <div className="grid grid-cols-3 gap-4 mb-4">
-       <div className="flex items-center space-x-2">
-         <Bed className="h-4 w-4 text-gray-500" />
-         <span>{proprietate.dormitoare} dormitoare</span>
-       </div>
-       <div className="flex items-center space-x-2">
-         <Bath className="h-4 w-4 text-gray-500" />
-         <span>{proprietate.bai} băi</span>
-       </div>
-       <div className="flex items-center space-x-2">
-         <Square className="h-4 w-4 text-gray-500" />
-         <span>{proprietate.suprafata} m²</span>
-       </div>
-     </div>
-     <Button variant="outline" className="w-full">
-       Vezi detalii
-       <ArrowRight className="h-4 w-4 ml-2" />
-     </Button>
-   </CardContent>
- </Card>
-);
+const PropertyCard = ({ proprietate }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <Card className="w-full hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Building2 className="h-5 w-5 text-blue-600" />
+          <span>{proprietate.nume}</span>
+        </CardTitle>
+        <CardDescription>{proprietate.adresa}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="flex items-center space-x-2">
+            <Bed className="h-4 w-4 text-gray-500" />
+            <span>{proprietate.dormitoare} dormitoare</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Bath className="h-4 w-4 text-gray-500" />
+            <span>{proprietate.bai} băi</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Square className="h-4 w-4 text-gray-500" />
+            <span>{proprietate.suprafata} m²</span>
+          </div>
+        </div>
+        <Button 
+          variant="outline" 
+          className="w-full"
+          onClick={() => navigate(`/property/${proprietate.id}`)}
+        >
+          Vezi detalii
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ProprietarDashboard = () => {
  const [proprietati, setProprietati] = useState([]);

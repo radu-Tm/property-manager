@@ -31,6 +31,7 @@ const ChiriasDashboard = () => {
   const [contracte, setContracte] = useState([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+ 
 
   useEffect(() => {
     fetchContracte();
@@ -60,6 +61,10 @@ const ChiriasDashboard = () => {
   }
 
   return (
+  <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6">
+        Bun venit, {user.email}
+      </h1>
     <div className="p-8">
       <h1 className="text-2xl font-bold mb-6">Contractele Mele</h1>
       <div className="grid gap-6">
@@ -113,6 +118,7 @@ const ChiriasDashboard = () => {
         )}
       </div>
     </div>
+	</div>
   );
 };
 
