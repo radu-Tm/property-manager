@@ -1,22 +1,178 @@
-# This "input" configures a global authorization rule to enable public access to
-# all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
-input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
-
-type Blog @model {
-  id: ID!
-  name: String!
-  posts: [Post] @hasMany
+type Query {
+  getProprietate: Proprietate
+  listProprietati: ProprietateConnection
+  getChirias: Chirias
+  listChiriasi: [Chirias]
+  getContract: Contracte
+  listContracte: [Contracte]
+  getDocumenteProprietate: DocumenteProprietate
+  listDocumenteProprietate: [DocumenteProprietate]
+  getInspectieProprietate: InspectieProprietate
+  listInspectiiProprietate: [InspectieProprietate]
+  getChirieColectata: ChirieColectata
+  listChirieColectata: [ChirieColectata]
+  getCheltuieli: Cheltuieli
+  listCheltuieli: [Cheltuieli]
 }
 
-type Post @model {
+type Proprietate {
   id: ID!
-  title: String!
-  blog: Blog @belongsTo
-  comments: [Comment] @hasMany
+  nume: String!
+  tip: String
+  imagine: String
+  latlong: String
+  adresa: String
+  NumarCladire: String
+  nivel: Int
+  dormitoare: Int
+  bai: Int
+  suprafata: Float
+  nota: String
+  documenteProprietate: [DocumenteProprietate]
+  inspectii: [InspectieProprietate]
+  chiriiColectate: [ChirieColectata]
+  contracte: [Contracte]
 }
 
-type Comment @model {
+type DocumenteProprietate {
   id: ID!
-  post: Post @belongsTo
-  content: String!
+  nume: String!
+  fisier: String
+  DataColectarii: String
+  data_expirare: String
+  nota: String
+  id_proprietate: ID!
 }
+
+type InspectieProprietate {
+  id: ID!
+  data: String
+  nume_item: String
+  suma: Float
+  nota: String
+  id_proprietate: ID!
+}
+
+type ChirieColectata {
+  data: String
+  suma: Float
+  nota: String
+  id_proprietate: ID!
+}
+
+type Contracte {
+  id: ID!
+  IDProprietate: ID!
+  IDChirias: ID!
+  DataInceput: String!
+  Durata: Int!
+  DataSfarsit: String
+  CrestereProcent: Float
+  ChirieInitiala: Float
+  Nota: String
+  chirias: Chirias
+  proprietate: Proprietate
+}
+
+type Chirias {
+  id: ID!
+  nume: String!
+  imagine: String
+  telefon: String
+  telefon2: String
+  nota: String
+  ChiriasAsociat: Int
+  contracte: [Contracte]
+}
+
+type ProprietateConnection {
+  items: [Proprietate]
+  nextToken: String
+}
+
+type Cheltuieli {
+  id: ID!
+  data: String
+  suma: Float
+  nota: String
+  id_proprietate: ID!
+  categorie: String
+}
+
+type Mutation {
+  createProprietate: Proprietate
+  updateProprietate: Proprietate
+  deleteProprietate: Proprietate
+  createChirias: Chirias
+  updateChirias: Chirias
+  deleteChirias: Chirias
+  createContract: Contracte
+  updateContract: Contracte
+  deleteContract: Contracte
+}
+
+input CreateProprietateInput {
+  nume: String!
+  tip: String
+  adresa: String
+  NumarCladire: String
+  nivel: Int
+  dormitoare: Int
+  bai: Int
+  suprafata: Float
+  nota: String
+}
+
+input UpdateProprietateInput {
+  id: ID!
+  nume: String
+  tip: String
+  adresa: String
+  NumarCladire: String
+  nivel: Int
+  dormitoare: Int
+  bai: Int
+  suprafata: Float
+  nota: String
+}
+
+input CreateChiriasInput {
+  nume: String!
+  telefon: String
+  telefon2: String
+  nota: String
+  ChiriasAsociat: Int
+}
+
+input UpdateChiriasInput {
+  id: ID!
+  nume: String
+  telefon: String
+  telefon2: String
+  nota: String
+  ChiriasAsociat: Int
+}
+
+input CreateContractInput {
+  IDProprietate: ID!
+  IDChirias: ID!
+  DataInceput: String!
+  Durata: Int!
+  DataSfarsit: String
+  CrestereProcent: Float
+  ChirieInitiala: Float
+  Nota: String
+}
+
+input UpdateContractInput {
+  id: ID!
+  IDProprietate: ID
+  IDChirias: ID
+  DataInceput: String
+  Durata: Int
+  DataSfarsit: String
+  CrestereProcent: Float
+  ChirieInitiala: Float
+  Nota: String
+}
+

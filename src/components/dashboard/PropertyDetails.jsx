@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
@@ -55,20 +55,24 @@ const PropertyDetails = () => {
     fetchPropertyDetails();
   }, [id]);
 
-  const fetchPropertyDetails = async () => {
-    try {
-      const result = await client.graphql({
-        query: getProprietate,
-        variables: { id }
-      });
-      setProperty(result.data.getProprietate);
-    } catch (err) {
-      console.error('Error fetching property details:', err);
-      setError('Nu s-au putut încărca detaliile proprietății');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchPropertyDetails = useCallback(async () => {
+  try {
+    const result = await client.graphql({
+      query: getProprietate,
+      variables: { id },
+    });
+    setProperty(result.data.getProprietate);
+  } catch (err) {
+    console.error('Error fetching property details:', err);
+    setError('Nu s-au putut încărca detaliile proprietății');
+  } finally {
+    setLoading(false);
+  }
+}, [id]);
+
+useEffect(() => {
+  fetchPropertyDetails();
+}, [fetchPropertyDetails]);
 
   if (loading) {
     return (
@@ -137,7 +141,7 @@ const PropertyDetails = () => {
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-600">Suprafață</dt>
-                <dd>{property.suprafata} m²</dd>
+                <dd>{parseFloat(property.suprafata).toFixed(2)} m²</dd>
               </div>
             </dl>
           </CardContent>
