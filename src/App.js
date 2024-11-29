@@ -7,7 +7,7 @@ import ChiriasDashboard from './components/dashboard/ChiriasDashboard';
 import PropertyDetails from './components/dashboard/PropertyDetails'; // Adaugă acest import
 import Header from './components/Header';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
+import { Toaster } from "./components/ui/toaster";
 const AppContent = () => {
   const { user, loading } = useAuth();
 
@@ -54,6 +54,7 @@ const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <AppContent />
+      <Toaster />
     </AuthProvider>
   </BrowserRouter>
 );
