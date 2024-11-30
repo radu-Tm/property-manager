@@ -9,6 +9,10 @@ import { useNotification } from '../../hooks/useNotification';
 import AddDocumentForm from './AddDocumentForm';
 import { downloadData } from 'aws-amplify/storage';
 import { Download } from 'lucide-react';
+import { getUrl } from 'aws-amplify/storage';
+import AddContractForm from './AddContractForm';
+import { Pencil, Trash2 } from 'lucide-react';
+import EditContractForm from './EditContractForm';
 
 const client = generateClient();
 
@@ -27,27 +31,22 @@ const getProprietate = /* GraphQL */ `
       nota
       contracte {
         id
+        numar_contract
         DataInceput
         DataSfarsit
+        Durata
+        CrestereProcent
         ChirieInitiala
-      }
-      chiriiColectate {
-        data
-        suma
-      }
-    documenteProprietate {
-        id
-        nume
-        fisier_key
-        DataColectarii
-        data_expirare
-        nota
-      }
-      inspectii {
-        id
-        data
-        nume_item
-        suma
+        plata_curent
+        numar_persoane
+        termen_plata
+        numar_locuri_parcare
+        Nota
+        chirias {
+          id
+          nume
+          email
+        }
       }
     }
   }
@@ -64,6 +63,14 @@ const deleteProprietate = /* GraphQL */ `
   }
 `;
 
+const deleteContract = /* GraphQL */ `
+  mutation DeleteContract($id: ID!) {
+    deleteContract(id: $id) {
+      id
+    }
+  }
+`;
+
 // Definim componenta ca o funcție, nu ca o constantă
 function PropertyDetails() {
   const navigate = useNavigate();
@@ -75,7 +82,21 @@ function PropertyDetails() {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddDocument, setShowAddDocument] = useState(false);
-  
+  const [showAddContract, setShowAddContract] = useState(false);
+  const [showEditContract, setShowEditContract] = useState(false);
+const [selectedContract, setSelectedContract] = useState(null);
+const [showDeleteConfirmContract, setShowDeleteConfirmContract] = useState(false);
+const [contractToDelete, setContractToDelete] = useState(null);
+
+const handleEditContract = (contract) => {
+  setSelectedContract(contract);
+  setShowEditContract(true);
+};
+
+const handleDeleteContract = (contractId) => {
+  setContractToDelete(contractId);
+  setShowDeleteConfirmContract(true);
+};
   useEffect(() => {
     fetchPropertyDetails();
   }, [id]);
@@ -110,32 +131,18 @@ function PropertyDetails() {
   };
   
 const handleDownload = async (doc) => {
-  console.log('Starting download for:', doc);
   try {
-    if (!doc.fisier_key) {
-      showError('Nu există fișier atașat pentru acest document.');
-      return;
-    }
-
-    console.log('Attempting to download with key:', doc.fisier_key);
-    
-    // Obținem URL-ul de download direct
-    //const url = await downloadData({
-    //  key: doc.fisier_key,
-    //  options: {
-    //    accessLevel: 'guest' // sau 'private' în funcție de configurația ta
-    //  }
-    //});
-const url = 'https://propertymanager7b909536351f4ea8bce232dd987cdc8a67e43-test.s3.us-east-1.amazonaws.com/public/'+doc.fisier_key
-    // Deschidem URL-ul într-o nouă fereastră sau facem download direct
-    //window.open(url, '_blank');
-    // SAU
-     window.location.href = url;
-
-    showSuccess('Fișier descărcat cu succes!');
+    const { url } = await getUrl({
+      key: doc.fisier_key,
+      options: {
+        expiresIn: 3600 // URL valid pentru o oră
+      }
+    });
+    window.location.href = url;
+    showSuccess('Descărcare inițiată');
   } catch (error) {
     console.error('Download error:', error);
-    showError('Eroare la descărcarea fișierului: ' + error.message);
+    showError('Eroare la descărcare');
   }
 };
 
@@ -230,34 +237,104 @@ const url = 'https://propertymanager7b909536351f4ea8bce232dd987cdc8a67e43-test.s
   </Card>
 
   {/* Contracte */}
-  <Card>
-    <CardHeader>
+<Card>
+  <CardHeader>
+    <div className="flex justify-between items-center">
       <CardTitle className="flex items-center gap-2">
         <Users className="h-5 w-5" />
         Contracte
       </CardTitle>
-    </CardHeader>
-    <CardContent>
-      {property.contracte?.length > 0 ? (
-        <div className="space-y-4">
-          {property.contracte.map(contract => (
-            <div key={contract.id} className="p-4 border rounded">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-600">Data început</span>
-                <span>{new Date(contract.DataInceput).toLocaleDateString('ro-RO')}</span>
+      <Button 
+        variant="outline" 
+        size="sm"
+        onClick={() => setShowAddContract(true)}
+      >
+        Adaugă Contract
+      </Button>
+    </div>
+  </CardHeader>
+  <CardContent>
+    {property.contracte?.length > 0 ? (
+      <div className="space-y-4">
+        {property.contracte.map(contract => (
+          <Card key={contract.id} className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Nr. Contract</p>
+                  <p className="font-medium">{contract.numar_contract}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Chiriaș</p>
+                  <p className="font-medium">{contract.chirias?.nume}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Perioadă</p>
+                  <p className="font-medium">
+                    {new Date(contract.DataInceput).toLocaleDateString('ro-RO')} - {' '}
+                    {new Date(contract.DataSfarsit).toLocaleDateString('ro-RO')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Chirie Lunară</p>
+                  <p className="font-medium">{contract.ChirieInitiala} RON</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Creștere Anuală</p>
+                  <p className="font-medium">{contract.CrestereProcent}%</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Termen Plată</p>
+                  <p className="font-medium">Ziua {contract.termen_plata}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Nr. Persoane</p>
+                  <p className="font-medium">{contract.numar_persoane}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Plată Curent</p>
+                  <p className="font-medium">{contract.plata_curent === 'pausal' ? 'Paușal' : 'Contor'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Locuri Parcare</p>
+                  <p className="font-medium">{contract.numar_locuri_parcare}</p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Chirie</span>
-                <span>{contract.ChirieInitiala} RON</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-500">Nu există contracte active</p>
-      )}
-    </CardContent>
-  </Card>
+			  
+			  <div className="md:col-span-3 flex justify-end space-x-2 mt-4">
+  <Button 
+    variant="outline"
+    size="sm"
+    onClick={() => handleEditContract(contract)}
+  >
+    <Pencil className="h-4 w-4 mr-1" />
+    Editează
+  </Button>
+  <Button 
+    variant="destructive"
+    size="sm"
+    onClick={() => handleDeleteContract(contract.id)}
+  >
+    <Trash2 className="h-4 w-4 mr-1" />
+    Șterge
+  </Button>
+</div>
+			  
+              {contract.Nota && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-gray-500">Notă</p>
+                  <p className="text-sm mt-1">{contract.Nota}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    ) : (
+      <p className="text-gray-500">Nu există contracte active</p>
+    )}
+  </CardContent>
+</Card>
 
   {/* Plăți */}
   <Card>
@@ -377,6 +454,68 @@ const url = 'https://propertymanager7b909536351f4ea8bce232dd987cdc8a67e43-test.s
           }}
         />
       )}
+{showAddContract && (
+  <AddContractForm
+    propertyId={id}
+    onClose={() => setShowAddContract(false)}
+    onSuccess={() => {
+      setShowAddContract(false);
+      fetchPropertyDetails(); // Reîncarcă detaliile proprietății
+    }}
+  />
+)}	  
+
+{showEditContract && selectedContract && (
+  <EditContractForm
+    contract={selectedContract}
+    onClose={() => setShowEditContract(false)}
+    onSuccess={() => {
+      setShowEditContract(false);
+      fetchPropertyDetails();
+    }}
+  />
+)}
+
+{showDeleteConfirmContract && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Confirmare ștergere</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>Sigur doriți să ștergeți acest contract? Acțiunea este ireversibilă.</p>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => setShowDeleteConfirmContract(false)}
+          >
+            Anulează
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              try {
+                await client.graphql({
+                  query: deleteContract,
+                  variables: { id: contractToDelete }
+                });
+                showSuccess('Contractul a fost șters cu succes!');
+                setShowDeleteConfirmContract(false);
+                fetchPropertyDetails();
+              } catch (error) {
+                console.error('Error deleting contract:', error);
+                showError('Nu s-a putut șterge contractul');
+              }
+            }}
+          >
+            Șterge
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+)}
+
     </div>
   );
 }
