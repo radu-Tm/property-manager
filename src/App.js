@@ -8,6 +8,7 @@ import PropertyDetails from './components/dashboard/PropertyDetails'; // Adaugă
 import Header from './components/Header';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from "./components/ui/toaster";
+
 const AppContent = () => {
   const { user, loading } = useAuth();
 

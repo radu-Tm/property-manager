@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Building2, Bed, Bath, Square, ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
+import NotificationsPanel from './NotificationsPanel';
 
 const client = generateClient();
 
@@ -131,6 +132,11 @@ const ProprietarDashboard = () => {
 
   return (
     <div className="p-8">
+	 {/* Secțiunea de notificări */}
+      <div className="mb-6">
+        <NotificationsPanel />
+      </div>
+	  
       <div className="flex flex-col space-y-4 mb-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Proprietățile Mele</h1>
