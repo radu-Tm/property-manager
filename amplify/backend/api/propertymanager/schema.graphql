@@ -1,22 +1,267 @@
-# This "input" configures a global authorization rule to enable public access to
-# all models in this schema. Learn more about authorization rules here: https://docs.amplify.aws/cli/graphql/authorization-rules
-input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
-
-type Blog @model {
-  id: ID!
-  name: String!
-  posts: [Post] @hasMany
+type CheckChiriasEmailResponse {
+	status: String!
+	message: String
 }
 
-type Post @model {
-  id: ID!
-  title: String!
-  blog: Blog @belongsTo
-  comments: [Comment] @hasMany
+type Cheltuieli {
+	id: ID!
+	data: String
+	suma: Float
+	nota: String
+	id_proprietate: ID!
+	categorie: String
 }
 
-type Comment @model {
-  id: ID!
-  post: Post @belongsTo
-  content: String!
+type Chirias {
+	id: ID!
+	nume: String!
+	email: String
+	telefon: String
+	telefon2: String
+	adresa: String
+	cont_bancar: String
+	cnp_cui: String
+	persoana_contact: String
+	nota: String
+	ChiriasAsociat: Int
+}
+
+type ChiriasiConnection {
+	items: [Chirias]
+}
+
+type ChirieColectata {
+	data: String
+	suma: Float
+	nota: String
+	id_proprietate: ID!
+}
+
+type Contracte {
+	id: ID!
+	numar_contract: String
+	IDProprietate: ID!
+	IDChirias: ID!
+	DataInceput: String!
+	DataSfarsit: String
+	Durata: Int
+	CrestereProcent: Float
+	ChirieInitiala: Float
+	plata_curent: String
+	numar_persoane: Int
+	termen_plata: Int
+	numar_locuri_parcare: Int
+	Nota: String
+	chirias: Chirias
+	proprietate: Proprietate
+}
+
+input CreateChiriasInput {
+	nume: String!
+	email: String
+	telefon: String
+	telefon2: String
+	adresa: String
+	cont_bancar: String
+	cnp_cui: String
+	persoana_contact: String
+	nota: String
+	ChiriasAsociat: Int
+}
+
+input CreateContractInput {
+	numar_contract: String!
+	IDProprietate: ID!
+	IDChirias: ID!
+	DataInceput: String!
+	Durata: Int!
+	DataSfarsit: String
+	CrestereProcent: Float
+	ChirieInitiala: Float
+	plata_curent: String
+	numar_persoane: Int
+	termen_plata: Int
+	numar_locuri_parcare: Int
+	Nota: String
+}
+
+input CreateDocumentInput {
+	nume: String!
+	fisier_key: String
+	DataColectarii: String
+	data_expirare: String
+	nota: String
+	id_proprietate: ID!
+}
+
+input CreateProprietateInput {
+	nume: String!
+	tip: String
+	adresa: String
+	NumarCladire: String
+	nivel: Int
+	dormitoare: Int
+	bai: Int
+	suprafata: Float
+	suprafata_cladire: Float
+	suprafata_comune: Float
+	inaltime: Float
+	geamuri: Boolean
+	nota: String
+}
+
+type DocumentAlert {
+	id: ID!
+	nume: String!
+	data_expirare: String!
+	proprietate: Proprietate
+	zileRamase: Int!
+}
+
+type DocumenteProprietate {
+	id: ID!
+	nume: String!
+	fisier_key: String
+	DataColectarii: String
+	data_expirare: String
+	nota: String
+	id_proprietate: ID!
+}
+
+type InspectieProprietate {
+	id: ID!
+	data: String
+	nume_item: String
+	suma: Float
+	nota: String
+	id_proprietate: ID!
+}
+
+type PaymentAlert {
+	id: ID!
+	numar_contract: String!
+	termen_plata: Int!
+	ChirieInitiala: Float!
+	proprietate: Proprietate
+	chirias: Chirias
+	zileRamase: Int
+}
+
+type Proprietate {
+	id: ID!
+	nume: String!
+	tip: String
+	imagine: String
+	latlong: String
+	adresa: String
+	NumarCladire: String
+	nivel: Int
+	dormitoare: Int
+	bai: Int
+	suprafata: Float
+	suprafata_cladire: Float
+	suprafata_comune: Float
+	inaltime: Float
+	geamuri: Boolean
+	nota: String
+	documenteProprietate: [DocumenteProprietate]
+	inspectii: [InspectieProprietate]
+	chiriiColectate: [ChirieColectata]
+	contracte: [Contracte]
+}
+
+type ProprietateConnection {
+	items: [Proprietate]
+	nextToken: String
+}
+
+input ProprietateFilterInput {
+	nume: String
+	tip: String
+	adresa: String
+}
+
+input UpdateChiriasInput {
+	id: ID!
+	nume: String
+	email: String
+	telefon: String
+	telefon2: String
+	adresa: String
+	cont_bancar: String
+	cnp_cui: String
+	persoana_contact: String
+	nota: String
+	ChiriasAsociat: Int
+}
+
+input UpdateContractInput {
+	id: ID!
+	numar_contract: String
+	DataInceput: String
+	Durata: Int
+	DataSfarsit: String
+	CrestereProcent: Float
+	ChirieInitiala: Float
+	plata_curent: String
+	numar_persoane: Int
+	termen_plata: Int
+	numar_locuri_parcare: Int
+	Nota: String
+}
+
+input UpdateProprietateInput {
+	id: ID!
+	nume: String
+	tip: String
+	adresa: String
+	NumarCladire: String
+	nivel: Int
+	dormitoare: Int
+	bai: Int
+	suprafata: Float
+	suprafata_cladire: Float
+	suprafata_comune: Float
+	inaltime: Float
+	geamuri: Boolean
+	nota: String
+}
+
+type Mutation {
+	createProprietate(input: CreateProprietateInput!): Proprietate
+	updateProprietate(input: UpdateProprietateInput!): Proprietate
+	deleteProprietate(id: ID!): Proprietate
+	createDocument(input: CreateDocumentInput!): DocumenteProprietate
+	createChirias(input: CreateChiriasInput!): Chirias
+	updateChirias: Chirias
+	deleteChirias: Chirias
+	createContract(input: CreateContractInput!): Contracte
+	updateContract(input: UpdateContractInput!): Contracte
+	deleteContract(id: ID!): Contracte
+}
+
+type Query {
+	getProprietate(id: ID!): Proprietate
+	listProprietati(
+		filter: ProprietateFilterInput,
+		sortBy: String,
+		limit: Int,
+		nextToken: String
+	): ProprietateConnection
+	getChirias: Chirias
+	checkChiriasEmail(email: String!): CheckChiriasEmailResponse
+	listChiriasi: ChiriasiConnection
+	getContract: Contracte
+	listContracte: [Contracte]
+	getDocumenteProprietate: DocumenteProprietate
+	listDocumenteProprietate: [DocumenteProprietate]
+	getExpiringContracts: [Contracte]
+	getPaymentDueAlerts: [PaymentAlert]
+	getExpiringDocuments: [DocumentAlert]
+	getInspectieProprietate: InspectieProprietate
+	listInspectiiProprietate: [InspectieProprietate]
+	getChirieColectata: ChirieColectata
+	listChirieColectata: [ChirieColectata]
+	getCheltuieli: Cheltuieli
+	listCheltuieli: [Cheltuieli]
 }

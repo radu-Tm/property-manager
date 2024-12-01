@@ -8,28 +8,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
   const checkAuth = async () => {
     try {
       const currentUser = await getCurrentUser();
-      const userAttributes = await fetchUserAttributes();
-      console.log('User attributes:', userAttributes); // pentru debug
-      
-      setUser({
-        id: currentUser.userId,
-        email: userAttributes.email,
-        userType: userAttributes['custom:userType']
-      });
+      if (currentUser) {  // Verificăm dacă avem un utilizator înainte de a cere atributele
+        const userAttributes = await fetchUserAttributes();
+        setUser({
+          id: currentUser.userId,
+          email: userAttributes.email,
+          userType: userAttributes['custom:userType']
+        });
+      }
     } catch (err) {
-      console.error('Auth error:', err);
-      setError(err);
+      // Dacă utilizatorul nu e autentificat, nu e o eroare - doar setăm user la null
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   if (loading) {
     return (

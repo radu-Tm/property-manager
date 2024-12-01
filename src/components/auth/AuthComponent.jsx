@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { signUp, signIn, confirmSignUp } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+
+const client = generateClient();
+
+const checkChiriasEmail = `
+    query CheckChiriasEmail($email: String!) {
+        checkChiriasEmail(email: $email) {
+            status
+            message
+        }
+    }
+`;
 
 export const AuthComponent = (props) => {
   const [authState, setAuthState] = useState('signIn');
@@ -12,6 +24,7 @@ export const AuthComponent = (props) => {
     userType: ''
   });
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState(null);
 
   const handleSignIn = async (e) => {
   e.preventDefault();
@@ -27,27 +40,45 @@ export const AuthComponent = (props) => {
   }
 };
 
-  const handleSignUp = async (e) => {
+const handleSignUp = async (e) => {
     e.preventDefault();
-    console.log('Form data:', formData);
     try {
-      const signUpResponse = await signUp({
-        username: formData.email,
-        password: formData.password,
-        options: {
-          userAttributes: {
-            email: formData.email,
-            'custom:userType': formData.userType
-          }
+        if (formData.userType === 'chirias') {
+            // Verificăm mai întâi dacă emailul există în sistem
+            const checkResponse = await client.graphql({
+    query: checkChiriasEmail,
+    variables: { email: formData.email }
+});
+
+// Verifică dacă răspunsul este corect structurat
+if (checkResponse.data.checkChiriasEmail.status === 'NOT_ALLOWED') {
+    setNotification({
+        type: 'info',
+        title: 'Verificare email',
+        message: checkResponse.data.checkChiriasEmail.message || 'Emailul nu este permis.',
+        className: 'bg-amber-50 border-amber-200'
+    });
+    return; // Nu mergem mai departe cu înregistrarea
+}
         }
-      });
-      console.log('SignUp response:', signUpResponse);
-      setAuthState('confirmSignUp'); // Forțăm tranziția către confirmare
+
+        // Doar dacă verificarea e OK sau e proprietar, continuăm cu înregistrarea
+        const signUpResponse = await signUp({
+            username: formData.email,
+            password: formData.password,
+            options: {
+                userAttributes: {
+                    email: formData.email,
+                    'custom:userType': formData.userType
+                }
+            }
+        });
+        setAuthState('confirmSignUp');
     } catch (err) {
-      console.error('SignUp error:', err);
-      setError(err.message);
+        console.error('SignUp error:', err);
+        setError('A apărut o eroare. Vă rugăm să încercați din nou.');
     }
-  };
+};
 
   const handleConfirmSignUp = async (e) => {
     e.preventDefault();
@@ -191,8 +222,16 @@ export const AuthComponent = (props) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {notification && (
+            <div className={`mb-4 p-4 rounded-lg ${notification.className}`}>
+              {notification.title && (
+                <p className="font-medium">{notification.title}</p>
+              )}
+              <p>{notification.message}</p>
+            </div>
+          )}
           {error && (
-            <div className="mb-4 p-2 bg-red-50 text-red-600 rounded text-sm">
+            <div className="mb-4 p-2 bg-red-50 text-red-600 rounded">
               {error}
             </div>
           )}

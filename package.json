@@ -6,6 +6,7 @@
     "@aws-amplify/api": "^6.1.4",
     "@aws-amplify/api-graphql": "^4.6.3",
     "@aws-amplify/ui-react": "^6.7.0",
+    "@fontsource/oswald": "^5.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.2",
     "@testing-library/jest-dom": "^5.17.0",
