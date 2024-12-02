@@ -7,25 +7,24 @@ import { useAuth } from '../../context/AuthContext';
 
 const client = generateClient();
 
-const listContracte = /* GraphQL */ `
-  query ListContracte {
-    listContracte {
-      items {
-        id
-        IDProprietate
-        DataInceput
-        DataSfarsit
-        ChirieInitiala
-        CrestereProcent
-        Nota
-        proprietate {
-          nume
-          adresa
-        }
+const getContracteChirias = /* GraphQL */ `
+  query GetContracteChirias($email: String!) {
+    getContracteChirias(email: $email) {
+      id
+      IDProprietate
+      DataInceput
+      DataSfarsit
+      ChirieInitiala
+      CrestereProcent
+      Nota
+      proprietate {
+        nume
+        adresa
       }
     }
   }
 `;
+
 
 const ChiriasDashboard = () => {
   const [contracte, setContracte] = useState([]);
@@ -37,20 +36,21 @@ const ChiriasDashboard = () => {
     fetchContracte();
   }, []);
 
-  const fetchContracte = async () => {
+const fetchContracte = async () => {
     try {
       setLoading(true);
       const result = await client.graphql({
-        query: listContracte
+        query: getContracteChirias,
+        variables: { email: user.email }
       });
-      console.log('Contracte primite:', result.data.listContracte.items);
-      setContracte(result.data.listContracte.items);
+      //console.log('Contracte primite:', result.data.getContracteChirias);
+      setContracte(result.data.getContracteChirias);
     } catch (error) {
       console.error('Error fetching contracts:', error);
     } finally {
       setLoading(false);
     }
-  };
+};
 
   if (loading) {
     return (

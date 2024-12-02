@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
+import UtilitatiForm from './UtilitatiForm';
+import UtilitatiList from './UtilitatiList';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -8,6 +10,16 @@ import NotificationsPanel from './NotificationsPanel';
 
 const client = generateClient();
 
+const listCladiri = /* GraphQL */ `
+  query ListCladiri {
+    listCladiri {
+      items {
+        id
+        nume
+      }
+    }
+  }
+`;
 const listProprietati = /* GraphQL */ `
   query ListProprietati {
     listProprietati {
@@ -22,11 +34,11 @@ const listProprietati = /* GraphQL */ `
         bai
         suprafata
         nota
+        id_cladire
       }
     }
   }
 `;
-
 const PROPERTY_TYPES = ['Toate', 'Apartament', 'Casă', 'Comercial'];
 
 const PropertyCard = ({ proprietate }) => {
@@ -75,68 +87,129 @@ const PropertyCard = ({ proprietate }) => {
 };
 
 const ProprietarDashboard = () => {
-  const [proprietati, setProprietati] = useState([]);
-  const [filteredProprietati, setFilteredProprietati] = useState([]);
+const [proprietati, setProprietati] = useState([]);
+const [filteredProprietati, setFilteredProprietati] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('Toate');
   const [sortBy, setSortBy] = useState('nume');
   const [showFilters, setShowFilters] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+ const [cladiri, setCladiri] = useState([]);
+  const [selectedCladire, setSelectedCladire] = useState(null);
+  const [selectedLuna, setSelectedLuna] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
-  useEffect(() => {
-    fetchProprietati();
-  }, []);
+  const handleCladireChange = (e) => {
+  setSelectedCladire(e.target.value);
+  fetchProprietati(); // Reîncărcăm proprietățile
+};
 
-  const fetchProprietati = async () => {
-    try {
-      setLoading(true);
-      const result = await client.graphql({
-        query: listProprietati
-      });
-      const items = result.data.listProprietati.items;
-      setProprietati(items);
-      setFilteredProprietati(items);
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-    } finally {
-      setLoading(false);
+ const fetchCladiri = async () => {
+  try {
+    const result = await client.graphql({
+      query: listCladiri
+    });
+    console.log('Rezultat listCladiri:', result);
+    setCladiri(result.data.listCladiri.items);
+  } catch (error) {
+    console.error('Error fetching cladiri:', error.errors?.[0]?.message || error);
+  }
+};
+
+const fetchProprietati = async () => {
+  try {
+    setLoading(true);
+    const result = await client.graphql({
+      query: listProprietati
+    });
+    //console.log('Proprietati primite:', result.data.listProprietati.items);
+    const items = result.data.listProprietati.items;
+    setProprietati(items);
+    setFilteredProprietati(items);
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+ useEffect(() => {
+  fetchCladiri();
+}, []);
+
+// Al doilea efect pentru încărcarea proprietăților - adăugăm selectedCladire ca dependență
+useEffect(() => {
+  fetchProprietati();
+}, [selectedCladire]); // Se va executa când se schimbă clădirea selectată
+
+// Al treilea efect pentru filtrare
+useEffect(() => {
+  let filtered = [...proprietati];
+
+  // Filtrăm după clădirea selectată
+  if (selectedCladire) {
+    filtered = filtered.filter(prop => prop.id_cladire === selectedCladire);
+  }
+
+  // Restul filtrărilor existente
+  filtered = filtered.filter(prop => {
+    const matchesSearch = !searchTerm || 
+      prop.nume.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      prop.adresa.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = selectedType === 'Toate' || prop.tip === selectedType;
+    return matchesSearch && matchesType;
+  });
+
+  // Sortarea existentă
+  filtered.sort((a, b) => {
+    if (sortBy === 'nume') {
+      return a.nume.localeCompare(b.nume);
+    } else if (sortBy === 'suprafata') {
+      return (b.suprafata || 0) - (a.suprafata || 0);
     }
-  };
+    return 0;
+  });
 
-  // Efect pentru filtrare și sortare
-  useEffect(() => {
-    let filtered = [...proprietati];
+  setFilteredProprietati(filtered);
+}, [proprietati, selectedCladire, searchTerm, selectedType, sortBy]);
+ return (
+  <div className="p-8">
+    <div className="mb-6 min-h-[400px]">
+      <NotificationsPanel />
+    </div>
 
-    // Filtrare
-    filtered = filtered.filter(prop => {
-      const matchesSearch = !searchTerm || 
-        prop.nume.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prop.adresa.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = selectedType === 'Toate' || prop.tip === selectedType;
-      return matchesSearch && matchesType;
-    });
-
-    // Sortare
-    filtered.sort((a, b) => {
-      if (sortBy === 'nume') {
-        return a.nume.localeCompare(b.nume);
-      } else if (sortBy === 'suprafata') {
-        return (b.suprafata || 0) - (a.suprafata || 0);
-      }
-      return 0;
-    });
-
-    setFilteredProprietati(filtered);
-  }, [searchTerm, selectedType, sortBy, proprietati]);
-
-  return (
-    <div className="p-8">
-	 {/* Secțiunea de notificări */}
-      <div className="mb-6">
-        <NotificationsPanel />
+    {/* Secțiunea de utilități - adăugăm înălțime minimă */}
+    <div className="mb-8 min-h-[400px]">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">Gestiune Utilități</h2>
+        <div className="flex gap-4">
+          <select
+  value={selectedCladire || ''}
+  onChange={(e) => setSelectedCladire(e.target.value)}
+  className="p-2 border rounded min-w-[200px]"
+>
+  <option value="">Toate clădirile</option>
+  {cladiri.map(cladire => (
+    <option key={cladire.id} value={cladire.id}>{cladire.nume}</option>
+  ))}
+</select>
+          
+          <input
+            type="month"
+            value={selectedLuna}
+            onChange={(e) => setSelectedLuna(e.target.value)}
+            className="p-2 border rounded min-w-[150px]" // Adăugăm lățime minimă
+          />
+        </div>
       </div>
-	  
+
+      {selectedCladire && (
+        <div className="grid md:grid-cols-2 gap-6 min-h-[300px]">
+          <UtilitatiForm id_cladire={selectedCladire} luna={selectedLuna} />
+          <UtilitatiList id_cladire={selectedCladire} luna={selectedLuna} />
+        </div>
+      )}
+    </div>	  
       <div className="flex flex-col space-y-4 mb-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Proprietățile Mele</h1>

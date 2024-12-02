@@ -11,3 +11,32 @@ font-family: 'Barlow Condensed';
   font-size: 1.5em;
   font-style: normal;
 }
+#bila {margin-top:30px;width:100%;text-align:center;margin:0 auto;opacity:0.8;  border-radius: 50%;-webkit-transition: -webkit-transform .8s ease-in-out;transition:         transform .8s ease-in-out;
+-moz-transition: -webkit-transform .8s ease-in-out;
+-o-transition: -webkit-transform .8s ease-in-out;
+}
+
+#bila:hover {
+  -webkit-transform: rotate(360deg);
+  -moz-transform: rotate(360deg);
+  -o-transform: rotate(360deg);
+  -ms-transform: rotate(360deg);
+          transform: rotate(360deg);
+          overflow:hidden;
+}
+
+  @keyframes rotateOnLoad {
+     0% {
+        transform: rotate(0deg);
+      }
+      50% {
+        transform: rotate(180deg); /* Tura completă înainte */
+      }
+      100% {
+        transform: rotate(0deg); /* Revine la poziția inițială */
+      }
+    }
+	
+	 .rotate-on-load {
+      animation: rotateOnLoad 2s ease-in-out;
+    }
