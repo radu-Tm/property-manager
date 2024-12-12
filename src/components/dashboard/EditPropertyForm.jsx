@@ -3,6 +3,7 @@ import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { useNotification } from '../../hooks/useNotification';
+import { uploadData } from 'aws-amplify/storage';
 const client = generateClient();
 
 const updateProprietate = /* GraphQL */ `
@@ -13,10 +14,9 @@ const updateProprietate = /* GraphQL */ `
       id
       nume
       tip
+	  releveu
       adresa
-      NumarCladire
       nivel
-      dormitoare
       bai
       suprafata
       nota
@@ -31,16 +31,56 @@ const EditPropertyForm = ({ property, onClose, onSuccess }) => {
     nume: property.nume || '',
     tip: property.tip || 'Apartament',
     adresa: property.adresa || '',
-    NumarCladire: property.NumarCladire || '',
+    releveu: property.releveu || '',
     nivel: property.nivel || '',
-    dormitoare: property.dormitoare || '',
     bai: property.bai || '',
     suprafata: property.suprafata || '',
     nota: property.nota || ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const handleReleuUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
+  try {
+    // Convertim fișierul în Base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+      setFormData(prev => ({
+        ...prev,
+        releveu: base64
+      }));
+    };
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('Error uploading releveu:', error);
+  }
+};
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+        const result = await uploadData({
+            key: `relevee/${Date.now()}-${file.name}`,
+            data: file,
+            options: {
+                contentType: file.type
+            }
+        }).result;
+
+        setFormData(prev => ({
+            ...prev,
+            releveu: result.key
+        }));
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        showError('Eroare la încărcarea fișierului');
+    }
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -52,10 +92,10 @@ const EditPropertyForm = ({ property, onClose, onSuccess }) => {
         id: formData.id,
         nume: formData.nume,
         tip: formData.tip,
-        adresa: formData.adresa,
+        releveu: formData.releveu,
+		adresa: formData.adresa,
         NumarCladire: formData.NumarCladire,
-        nivel: parseInt(formData.nivel) || null,
-        dormitoare: parseInt(formData.dormitoare) || null,
+        nivel: formData.nivel?.toString(),
         bai: parseInt(formData.bai) || null,
         suprafata: parseFloat(formData.suprafata) || null,
         nota: formData.nota
@@ -127,24 +167,22 @@ showSuccess("Proprietatea a fost actualizată cu succes!");
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Număr Clădire
-                </label>
-                <input
-                  type="text"
-                  value={formData.NumarCladire}
-                  onChange={(e) => setFormData({...formData, NumarCladire: e.target.value})}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
+             <div>
+  <label className="block text-sm font-medium mb-1">Releveu</label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleImageUpload}
+    className="w-full p-2 border rounded"
+  />
+</div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Nivel
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={formData.nivel}
                   onChange={(e) => setFormData({...formData, nivel: e.target.value})}
                   className="w-full p-2 border rounded"
@@ -152,18 +190,6 @@ showSuccess("Proprietatea a fost actualizată cu succes!");
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Dormitoare
-                </label>
-                <input
-                  type="number"
-                  value={formData.dormitoare}
-                  onChange={(e) => setFormData({...formData, dormitoare: e.target.value})}
-                  className="w-full p-2 border rounded"
-                  min="0"
-                />
-              </div>
 
               <div>
                 <label className="block text-sm font-medium mb-1">

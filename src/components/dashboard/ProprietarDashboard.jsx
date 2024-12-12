@@ -5,15 +5,17 @@ import UtilitatiList from './UtilitatiList';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Bed, Bath, Square, ArrowRight, Search, SlidersHorizontal, Bell } from 'lucide-react';
+import { Building2, Bed, Bath, Square, ArrowRight, Search, SlidersHorizontal, Bell, CreditCard, ArrowUp } from 'lucide-react';
 import NotificationsPanel from './NotificationsPanel';
 import AddPropertyForm from './AddPropertyForm';
+import FisaUtilitati from './FisaUtilitati';
+import { useAuth } from '../../context/AuthContext';
 
 const client = generateClient();
 
 const listCladiri = /* GraphQL */ `
-  query ListCladiri {
-    listCladiri {
+  query ListCladiri($email: String!) {
+    listCladiri(email: $email) {
       items {
         id
         nume
@@ -23,29 +25,34 @@ const listCladiri = /* GraphQL */ `
 `;
 
 const listProprietati = /* GraphQL */ `
-  query ListProprietati {
-    listProprietati {
+  query ListProprietati($email: String!) {
+    listProprietati(email: $email) {
       items {
         id
         nume
         tip
+		releveu
         adresa
-        NumarCladire
         nivel
-        dormitoare
         bai
         suprafata
         nota
         id_cladire
+        contracte {
+          ChirieInitiala
+          chirias {
+            nume
+          }
+        }
       }
     }
   }
 `;
-
 const PROPERTY_TYPES = ['Toate', 'Apartament', 'Casă', 'Comercial'];
 
 const PropertyCard = ({ proprietate }) => {
   const navigate = useNavigate();
+  const contractActiv = proprietate.contracte?.[0];
   
   const formatNumber = (number) => {
     if (number === null || number === undefined) return '';
@@ -59,21 +66,28 @@ const PropertyCard = ({ proprietate }) => {
           <Building2 className="h-5 w-5 text-blue-600" />
           <span>{proprietate.nume}</span>
         </CardTitle>
-        <CardDescription>{proprietate.adresa}</CardDescription>
+        <div className="text-sm text-gray-500">
+          <p>{proprietate.adresa}</p>
+          {contractActiv?.chirias && (
+            <p className="text-gray-600 mt-1">
+              Chiriaș: {contractActiv.chirias.nume}
+            </p>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="flex items-center space-x-2">
-            <Bed className="h-4 w-4 text-gray-500" />
-            <span>{proprietate.dormitoare} dormitoare</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Bath className="h-4 w-4 text-gray-500" />
-            <span>{proprietate.bai} băi</span>
-          </div>
-          <div className="flex items-center space-x-2">
             <Square className="h-4 w-4 text-gray-500" />
             <span>{formatNumber(proprietate.suprafata)} m²</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <ArrowUp className="h-4 w-4 text-gray-500" />
+            <span>Etaj {proprietate.nivel || 0}</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <CreditCard className="h-4 w-4 text-gray-500" />
+            <span>{formatNumber(contractActiv?.ChirieInitiala || 0)} RON</span>
           </div>
         </div>
         <Button 
@@ -90,6 +104,8 @@ const PropertyCard = ({ proprietate }) => {
 };
 
 const ProprietarDashboard = () => {
+	const { user } = useAuth(); 
+	//console.log(user.email);
   const [proprietati, setProprietati] = useState([]);
   const [filteredProprietati, setFilteredProprietati] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -108,32 +124,40 @@ const ProprietarDashboard = () => {
     fetchProprietati();
   };
 
-  const fetchCladiri = async () => {
-    try {
-      const result = await client.graphql({
-        query: listCladiri
-      });
-      setCladiri(result.data.listCladiri.items);
-    } catch (error) {
-      console.error('Error fetching cladiri:', error.errors?.[0]?.message || error);
+const fetchProprietati = async () => {
+  try {
+    setLoading(true);  // Înainte de fetch
+    console.log('Fetching properties for email:', user.email);
+    const response = await client.graphql({
+      query: listProprietati,
+      variables: { email: user.email }
+    });
+    console.log('Full GraphQL response:', JSON.stringify(response, null, 2));
+    
+    if (response.data?.listProprietati?.items) {
+      setProprietati(response.data.listProprietati.items);
+      setFilteredProprietati(response.data.listProprietati.items);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+  } finally {
+    setLoading(false);  // Important: trebuie să fie în finally
+  }
+};
 
-  const fetchProprietati = async () => {
-    try {
-      setLoading(true);
-      const result = await client.graphql({
-        query: listProprietati
-      });
-      const items = result.data.listProprietati.items;
-      setProprietati(items);
-      setFilteredProprietati(items);
-    } catch (error) {
-      console.error('Error fetching properties:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchCladiri = async () => {
+  try {
+    console.log('User email in fetchCladiri:', user.email);
+    const response = await client.graphql({
+      query: listCladiri,
+      variables: { email: user.email }
+    });
+    console.log('GraphQL response cladiri:', response);
+    setCladiri(response.data.listCladiri.items);
+  } catch (error) {
+    console.error('Error fetching cladiri:', error);
+  }
+};
 
   useEffect(() => {
     fetchCladiri();
@@ -171,7 +195,7 @@ const ProprietarDashboard = () => {
   }, [proprietati, selectedCladire, searchTerm, selectedType, sortBy]);
 
   return (
-    <div className="p-8">
+      <div className="p-8">
       {/* Buton Notificări */}
       <div className="fixed bottom-4 right-4 z-50">
         <Button 
@@ -282,8 +306,14 @@ const ProprietarDashboard = () => {
         </div>
       </div>
 
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Facturi și Utilități</h2>
+        <FisaUtilitati />
+      </div>
+   
       {/* Gestiune Utilități */}
-      {selectedCladire && (
+       {/* suspendata pentru intrare in productie la moteletul
+	   {selectedCladire && (
         <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Gestiune Utilități</h2>
           <div className="flex items-center mb-4">
@@ -300,7 +330,7 @@ const ProprietarDashboard = () => {
           </div>
         </div>
       )}
-
+*/}
       {/* Modal Adăugare Proprietate */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">

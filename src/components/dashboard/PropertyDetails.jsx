@@ -22,10 +22,9 @@ const getProprietate = /* GraphQL */ `
       id
       nume
       tip
+	  releveu
       adresa
-      NumarCladire
       nivel
-      dormitoare
       bai
       suprafata
       nota
@@ -212,17 +211,18 @@ const handleDownload = async (doc) => {
           <dt className="text-gray-600">Tip</dt>
           <dd>{property.tip}</dd>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-600">Număr Clădire</dt>
-          <dd>{property.NumarCladire}</dd>
-        </div>
-        <div className="flex justify-between">
+        
+		{property.releveu && (
+  <img 
+    src={property.releveu} 
+    alt="Releveu" 
+    className="max-w-full h-auto"
+  />
+)}
+		
+		<div className="flex justify-between">
           <dt className="text-gray-600">Nivel</dt>
           <dd>{property.nivel}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-600">Dormitoare</dt>
-          <dd>{property.dormitoare}</dd>
         </div>
         <div className="flex justify-between">
           <dt className="text-gray-600">Băi</dt>
