@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { useAuth } from '../../context/AuthContext';
+import { uploadData } from 'aws-amplify/storage';
+import { useNotification } from '../../hooks/useNotification';
 
 const createProprietate = /* GraphQL */ `
  mutation CreateProprietate($input: CreateProprietateInput!) {
@@ -10,60 +13,61 @@ const createProprietate = /* GraphQL */ `
      id
      nume
      tip
+	 releveu
      adresa
      nivel
-     dormitoare
      bai
      suprafata
-     suprafata_cladire
-     suprafata_comune
      inaltime
      geamuri
      nota
      id_cladire
+	 id_proprietar
    }
  }
 `;
 
 const listCladiri = /* GraphQL */ `
- query ListCladiri {
-   listCladiri {
-     items {
-       id
-       nume
-     }
-   }
- }
+  query ListCladiri($email: String!) {
+    listCladiri(email: $email) {
+      items {
+        id
+        nume
+      }
+    }
+  }
 `;
 
 const AddPropertyForm = ({ onSuccess, onCancel }) => {
+	const { user } = useAuth();
  const [showBuildingFields, setShowBuildingFields] = useState(false);
  const [cladiri, setCladiri] = useState([]);
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState('');
+ const { showSuccess, showError } = useNotification();
  const [formData, setFormData] = useState({
    nume: '',
    tip: 'Apartament',
+   releveu: '',
    adresa: '',
    id_cladire: '',
    nivel: '',
-   dormitoare: '',
    bai: '',
    suprafata: '',
-   suprafata_cladire: '',
-   suprafata_comune: '',
    inaltime: '',
    geamuri: true,
-   nota: ''
+   nota: '',
+   id_proprietar:''
  });
 
- const client = generateClient();
 
+ const client = generateClient();
  useEffect(() => {
    const fetchCladiri = async () => {
      try {
        const result = await client.graphql({
-         query: listCladiri
+         query: listCladiri,
+		 variables: { email: user.email }
        });
        setCladiri(result.data.listCladiri.items);
      } catch (error) {
@@ -78,7 +82,47 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
    setFormData(prev => ({...prev, id_cladire: value}));
    setShowBuildingFields(!!value);
  };
+const handleReleuUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
+  try {
+    // Convertim fișierul în Base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result;
+      setFormData(prev => ({
+        ...prev,
+        releveu: base64
+      }));
+    };
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error('Error uploading releveu:', error);
+  }
+};
+const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+        const result = await uploadData({
+            key: `relevee/${Date.now()}-${file.name}`,
+            data: file,
+            options: {
+                contentType: file.type
+            }
+        }).result;
+
+        setFormData(prev => ({
+            ...prev,
+            releveu: result.key
+        }));
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        showError('Eroare la încărcarea fișierului');
+    }
+};
  const handleSubmit = async (e) => {
    e.preventDefault();
    setLoading(true);
@@ -88,14 +132,12 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
      const input = {
        nume: formData.nume,
        tip: formData.tip,
-       adresa: formData.adresa,
+       releveu:formData.releveu,
+	   adresa: formData.adresa,
        id_cladire: formData.id_cladire || null,
        nivel: formData.nivel ? parseInt(formData.nivel) : null,
-       dormitoare: formData.dormitoare ? parseInt(formData.dormitoare) : null,
        bai: formData.bai ? parseInt(formData.bai) : null,
        suprafata: formData.suprafata ? parseFloat(formData.suprafata) : null,
-       suprafata_cladire: formData.suprafata_cladire ? parseFloat(formData.suprafata_cladire) : null,
-       suprafata_comune: formData.suprafata_comune ? parseFloat(formData.suprafata_comune) : null,
        inaltime: formData.inaltime ? parseFloat(formData.inaltime) : null,
        geamuri: formData.geamuri
      };
@@ -142,24 +184,11 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
                required
              >
                <option value="Apartament">Apartament</option>
-               <option value="Casă">Casă</option>
                <option value="Comercial">Spațiu Comercial</option>
                <option value="Altul">Altul</option>
              </select>
            </div>
-
-           <div className="md:col-span-2">
-             <label className="block text-sm font-medium mb-1">Adresă*</label>
-             <input
-               type="text"
-               value={formData.adresa || ''}
-               onChange={(e) => setFormData(prev => ({...prev, adresa: e.target.value}))}
-               className="w-full p-2 border rounded"
-               required
-             />
-           </div>
-
-           <div>
+		       <div>
              <label className="block text-sm font-medium mb-1">Clădire</label>
              <select
                value={formData.id_cladire || ''}
@@ -173,37 +202,36 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
              </select>
            </div>
 
-           {showBuildingFields && (
+       
              <div>
-               <label className="block text-sm font-medium mb-1">Suprafață Clădire (m²)</label>
+               <label className="block text-sm font-medium mb-1">Suprafață(m²)</label>
                <input
                  type="number"
-                 value={formData.suprafata_cladire || ''}
-                 onChange={(e) => setFormData(prev => ({...prev, suprafata_cladire: e.target.value}))}
+                 value={formData.suprafata || ''}
+                 onChange={(e) => setFormData(prev => ({...prev, suprafata: e.target.value}))}
                  className="w-full p-2 border rounded"
                  min="0"
                  step="0.01"
                />
              </div>
-           )}
-
+  {!showBuildingFields && (
+           <div className="md:col-span-2">
+             <label className="block text-sm font-medium mb-1">Adresă*</label>
+             <input
+               type="text"
+               value={formData.adresa || ''}
+               onChange={(e) => setFormData(prev => ({...prev, adresa: e.target.value}))}
+               className="w-full p-2 border rounded"
+               required
+             />
+           </div>
+  )}         
            <div>
              <label className="block text-sm font-medium mb-1">Nivel</label>
              <input
                type="number"
                value={formData.nivel || ''}
                onChange={(e) => setFormData(prev => ({...prev, nivel: e.target.value}))}
-               className="w-full p-2 border rounded"
-               min="0"
-             />
-           </div>
-
-           <div>
-             <label className="block text-sm font-medium mb-1">Dormitoare</label>
-             <input
-               type="number"
-               value={formData.dormitoare || ''}
-               onChange={(e) => setFormData(prev => ({...prev, dormitoare: e.target.value}))}
                className="w-full p-2 border rounded"
                min="0"
              />
@@ -217,30 +245,6 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
                onChange={(e) => setFormData(prev => ({...prev, bai: e.target.value}))}
                className="w-full p-2 border rounded"
                min="0"
-             />
-           </div>
-
-           <div>
-             <label className="block text-sm font-medium mb-1">Suprafață (m²)</label>
-             <input
-               type="number"
-               value={formData.suprafata || ''}
-               onChange={(e) => setFormData(prev => ({...prev, suprafata: e.target.value}))}
-               className="w-full p-2 border rounded"
-               min="0"
-               step="0.01"
-             />
-           </div>
-
-           <div>
-             <label className="block text-sm font-medium mb-1">Suprafață Comună (m²)</label>
-             <input
-               type="number"
-               value={formData.suprafata_comune || ''}
-               onChange={(e) => setFormData(prev => ({...prev, suprafata_comune: e.target.value}))}
-               className="w-full p-2 border rounded"
-               min="0"
-               step="0.01"
              />
            </div>
 

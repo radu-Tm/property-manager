@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Home, Users, Receipt, FileText, ClipboardCheck } from 'lucide-react';
+import { Building2, Home, Users, Receipt, FileText, ClipboardCheck, Image } from 'lucide-react';
 import EditPropertyForm from './EditPropertyForm';
 import { useNotification } from '../../hooks/useNotification';
 import AddDocumentForm from './AddDocumentForm';
@@ -70,6 +70,22 @@ const deleteContract = /* GraphQL */ `
   }
 `;
 
+const getFacturiIstoricByDate = /* GraphQL */ `
+  query GetFacturiIstoricByDate($startDate: String!, $endDate: String!) {
+    getFacturiIstoricByDate(startDate: $startDate, endDate: $endDate) {
+      id
+      tip
+      numar_factura
+      data_factura
+      suma
+      perioada_start
+      perioada_end
+      estimat
+    }
+  }
+`;
+
+
 // Definim componenta ca o funcție, nu ca o constantă
 function PropertyDetails() {
   const navigate = useNavigate();
@@ -77,7 +93,9 @@ function PropertyDetails() {
   const { showSuccess, showError } = useNotification(); // Folosim direct funcțiile din hook
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState(null);
+  
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddDocument, setShowAddDocument] = useState(false);
@@ -99,6 +117,26 @@ const handleDeleteContract = (contractId) => {
   useEffect(() => {
     fetchPropertyDetails();
   }, [id]);
+  
+  useEffect(() => {
+  async function getImageUrl() {
+    if (property?.releveu) {
+      try {
+        const { url } = await getUrl({
+          key: property.releveu,
+          options: {
+            accessLevel: 'guest',
+            validateObjectExistence: true
+          }
+        });
+        setImageUrl(url);
+      } catch (error) {
+        console.error('Error getting image URL:', error);
+      }
+    }
+  }
+  getImageUrl();
+}, [property?.releveu]);
 
   const fetchPropertyDetails = async () => {
     try {
@@ -145,6 +183,94 @@ const handleDownload = async (doc) => {
   }
 };
 
+
+const IstoricFacturi = () => {
+    const [facturi, setFacturi] = useState([]);
+    const [dateRange, setDateRange] = useState({
+        startDate: new Date(new Date().setMonth(new Date().getMonth() - 6)),
+        endDate: new Date()
+    });
+
+    const fetchFacturi = async () => {
+        try {
+            const response = await client.graphql({
+                query: getFacturiIstoricByDate,
+                variables: {
+                    startDate: dateRange.startDate.toISOString().split('T')[0],
+                    endDate: dateRange.endDate.toISOString().split('T')[0]
+                }
+            });
+            setFacturi(response.data.getFacturiIstoricByDate);
+        } catch (error) {
+            console.error('Error fetching istoric facturi:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchFacturi();
+    }, [dateRange]);
+
+    return (
+        <div className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Istoric Facturi</h2>
+                <div className="flex gap-4">
+                    <input
+                        type="month"
+                        value={dateRange.startDate.toISOString().slice(0, 7)}
+                        onChange={(e) => setDateRange(prev => ({
+                            ...prev,
+                            startDate: new Date(e.target.value)
+                        }))}
+                        className="border rounded p-2"
+                    />
+                    <span className="self-center">până la</span>
+                    <input
+                        type="month"
+                        value={dateRange.endDate.toISOString().slice(0, 7)}
+                        onChange={(e) => setDateRange(prev => ({
+                            ...prev,
+                            endDate: new Date(e.target.value)
+                        }))}
+                        className="border rounded p-2"
+                    />
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="p-4 text-left">Data</th>
+                            <th className="p-4 text-left">Tip</th>
+                            <th className="p-4 text-left">Nr. Factură</th>
+                            <th className="p-4 text-right">Sumă</th>
+                            <th className="p-4 text-center">Perioadă</th>
+							 <th className="p-4 text-center">Acțiuni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {facturi.map(factura => (
+                            <tr key={factura.id} className="border-t">
+                                <td className="p-4">{new Date(factura.data_factura).toLocaleDateString()}</td>
+                                <td className="p-4">{factura.tip}</td>
+                                <td className="p-4">{factura.numar_factura}</td>
+                                <td className="p-4 text-right">{factura.suma.toFixed(2)} RON</td>
+                                <td className="p-4 text-center">
+                                    {new Date(factura.perioada_start).toLocaleDateString()} - 
+                                    {new Date(factura.perioada_end).toLocaleDateString()}
+                                </td>
+			
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    );
+};
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -170,55 +296,67 @@ const handleDownload = async (doc) => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            {property.nume}
-          </h1>
-          <p className="text-gray-600 mt-2">{property.adresa}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowEditForm(true)}
-          >
-            Editează
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            Șterge
-          </Button>
-        </div>
+  <div className="p-8 max-w-7xl mx-auto">
+    {/* Header */}
+    <div className="mb-8 flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Building2 className="h-8 w-8 text-blue-600" />
+          {property.nume}
+        </h1>
+        <p className="text-gray-600 mt-2">{property.adresa}</p>
       </div>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setShowEditForm(true)}>
+          Editează
+        </Button>
+        <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+          Șterge
+        </Button>
+      </div>
+    </div>
 
-     
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  {/* Detalii generale */}
-  <Card>
+    {/* Main Content */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+	
+      {/* Releveu Card */}
+      {property?.releveu && (
+  <Card className="w-full">
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
-        <Home className="h-5 w-5" />
-        Informații Generale
+        <Image className="h-5 w-5" />
+        Releveu
       </CardTitle>
     </CardHeader>
     <CardContent>
-      <dl className="space-y-2">
+      <div className="w-full">
+        {imageUrl && (
+          <img 
+            src={imageUrl}
+            alt="Releveu proprietate"
+            className="w-full h-auto rounded-lg shadow-md"
+          />
+        )}
+      </div>
+    </CardContent>
+  </Card>
+)}
+      {/* Detalii generale Card */}
+      <Card className="w-full hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Home className="h-5 w-5" />
+            Informații Generale
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+		<dl className="space-y-2">
         <div className="flex justify-between">
           <dt className="text-gray-600">Tip</dt>
           <dd>{property.tip}</dd>
         </div>
         
-		{property.releveu && (
-  <img 
-    src={property.releveu} 
-    alt="Releveu" 
-    className="max-w-full h-auto"
-  />
-)}
+
 		
 		<div className="flex justify-between">
           <dt className="text-gray-600">Nivel</dt>

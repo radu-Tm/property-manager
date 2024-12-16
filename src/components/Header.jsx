@@ -19,13 +19,13 @@ const navigate = useNavigate();
             </div><span className="pmgr">PropManager</span>
           </div>
           
-          <div className="hidden md:flex items-center space-x-6">
-            <Button variant="ghost">Proprietăți</Button>
+          <div className="hidden md:flex items-center space-x-6 text-gray-500">
+            <Button onClick={handleClick} variant="ghost">Proprietăți</Button>
             <Button variant="ghost">Contracte</Button>
             <Button variant="ghost">Plăți</Button>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 text-gray-500">
             <Button variant="outline" className="hidden md:flex" onClick={onSignOut}>
               <UserCircle className="h-5 w-5 mr-2" />
               Deconectare
@@ -47,7 +47,7 @@ const navigate = useNavigate();
         {/* Meniu mobil */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t py-4 space-y-2">
-            <Button variant="ghost" className="w-full justify-start">
+            <Button onClick={handleClick} variant="ghost" className="w-full justify-start">
               Proprietăți
             </Button>
             <Button variant="ghost" className="w-full justify-start">

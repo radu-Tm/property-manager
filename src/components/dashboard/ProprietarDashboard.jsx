@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
-import UtilitatiForm from './UtilitatiForm';
-import UtilitatiList from './UtilitatiList';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Bed, Bath, Square, ArrowRight, Search, SlidersHorizontal, Bell, CreditCard, ArrowUp } from 'lucide-react';
+import { Building2, Bed, Bath, Square, ArrowRight, Search, SlidersHorizontal, Bell, CreditCard, ArrowUp, HandCoins, KeyRound } from 'lucide-react';
 import NotificationsPanel from './NotificationsPanel';
 import AddPropertyForm from './AddPropertyForm';
 import FisaUtilitati from './FisaUtilitati';
@@ -43,11 +41,17 @@ const listProprietati = /* GraphQL */ `
           chirias {
             nume
           }
+		   restanta @include(if: true) {
+            suma_totala
+            rest_plata
+          }
         }
       }
     }
   }
 `;
+
+
 const PROPERTY_TYPES = ['Toate', 'Apartament', 'Casă', 'Comercial'];
 
 const PropertyCard = ({ proprietate }) => {
@@ -63,32 +67,32 @@ const PropertyCard = ({ proprietate }) => {
     <Card className="w-full hover:shadow-lg transition-shadow">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Building2 className="h-5 w-5 text-blue-600" />
-          <span>{proprietate.nume}</span>
-        </CardTitle>
-        <div className="text-sm text-gray-500">
-          <p>{proprietate.adresa}</p>
-          {contractActiv?.chirias && (
+          <KeyRound className="h-5 w-5 text-green-600" />
+         {contractActiv?.chirias && (
             <p className="text-gray-600 mt-1">
-              Chiriaș: {contractActiv.chirias.nume}
+              {contractActiv.chirias.nume}
             </p>
           )}
+		  {!contractActiv?.chirias && (
+            <p className="text-gray-600 mt-1">
+             Spaţiu Gol
+            </p>
+          )}
+        </CardTitle>
+        <div className="flex justify-between text-sm text-gray-500">
+          <div>{proprietate.nume} </div><div className="flex items-center space-x-2"><CreditCard className="h-4 w-4 text-green-500" /><small>Chirie {formatNumber(contractActiv?.ChirieInitiala || 0)} EUR</small></div>
+          
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="flex items-center space-x-2">
-            <Square className="h-4 w-4 text-gray-500" />
-            <span>{formatNumber(proprietate.suprafata)} m²</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <ArrowUp className="h-4 w-4 text-gray-500" />
-            <span>Etaj {proprietate.nivel || 0}</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CreditCard className="h-4 w-4 text-gray-500" />
-            <span>{formatNumber(contractActiv?.ChirieInitiala || 0)} RON</span>
-          </div>
+        <div className="grid grid-cols-1 gap-4 mb-4">
+          {contractActiv?.restanta?.rest_plata !== undefined && (
+  <div className="flex items-center text-red-600 space-x-2">
+<HandCoins className="h-4 w-4 text-red-400" />   
+   <small>Restanțe {formatNumber(contractActiv.restanta.rest_plata)} RON
+    </small>
+  </div>
+)}
         </div>
         <Button 
           variant="outline" 
@@ -127,12 +131,12 @@ const ProprietarDashboard = () => {
 const fetchProprietati = async () => {
   try {
     setLoading(true);  // Înainte de fetch
-    console.log('Fetching properties for email:', user.email);
+    //console.log('Fetching properties for email:', user.email);
     const response = await client.graphql({
       query: listProprietati,
       variables: { email: user.email }
     });
-    console.log('Full GraphQL response:', JSON.stringify(response, null, 2));
+    //console.log('Full GraphQL response:', JSON.stringify(response, null, 2));
     
     if (response.data?.listProprietati?.items) {
       setProprietati(response.data.listProprietati.items);
@@ -147,12 +151,12 @@ const fetchProprietati = async () => {
 
 const fetchCladiri = async () => {
   try {
-    console.log('User email in fetchCladiri:', user.email);
+    //console.log('User email in fetchCladiri:', user.email);
     const response = await client.graphql({
       query: listCladiri,
       variables: { email: user.email }
     });
-    console.log('GraphQL response cladiri:', response);
+    //console.log('GraphQL response cladiri:', response);
     setCladiri(response.data.listCladiri.items);
   } catch (error) {
     console.error('Error fetching cladiri:', error);
@@ -310,27 +314,8 @@ const fetchCladiri = async () => {
         <h2 className="text-xl font-bold mb-4">Facturi și Utilități</h2>
         <FisaUtilitati />
       </div>
-   
-      {/* Gestiune Utilități */}
-       {/* suspendata pentru intrare in productie la moteletul
-	   {selectedCladire && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Gestiune Utilități</h2>
-          <div className="flex items-center mb-4">
-            <input
-              type="month"
-              value={selectedLuna}
-              onChange={(e) => setSelectedLuna(e.target.value)}
-              className="p-2 border rounded"
-            />
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <UtilitatiForm id_cladire={selectedCladire} luna={selectedLuna} />
-            <UtilitatiList id_cladire={selectedCladire} luna={selectedLuna} />
-          </div>
-        </div>
-      )}
-*/}
+	  
+
       {/* Modal Adăugare Proprietate */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">

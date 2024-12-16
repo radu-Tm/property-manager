@@ -196,12 +196,19 @@ showSuccess("Proprietatea a fost actualizată cu succes!");
                   Băi
                 </label>
                 <input
-                  type="number"
-                  value={formData.bai}
-                  onChange={(e) => setFormData({...formData, bai: e.target.value})}
-                  className="w-full p-2 border rounded"
-                  min="0"
-                />
+  type="text"
+  inputMode="numeric"
+  pattern="[0-9]*"
+  value={formData.bai || ''}
+  onChange={(e) => {
+    const val = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      bai: val === '' ? null : parseInt(val)
+    }));
+  }}
+  className="w-full p-2 border rounded"
+/>
               </div>
 
               <div>
