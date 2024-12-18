@@ -1,0 +1,6 @@
+.git
+amplify
+build
+node_modules
+public
+src

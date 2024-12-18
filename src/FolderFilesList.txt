@@ -1,0 +1,40 @@
+"property-manager/src" important structure
+
++---components
+|   |   Header.jsx
+|   |   
+|   +---auth
+|   |       AuthComponent.jsx
+|   |       
+|   +---dashboard
+|   |       AddChiriasForm.jsx
+|   |       AddContractForm.jsx
+|   |       AddDocumentForm.jsx
+|   |       AddPropertyForm.jsx
+|   |       ChiriasDashboard.jsx
+|   |       EditContractForm.jsx
+|   |       EditPropertyForm.jsx
+|   |       FisaUtilitati.jsx
+|   |       NotificationsPanel.jsx
+|   |       PropertyDetails.jsx
+|   |       ProprietarDashboard.jsx
+|   |       UtilitatiForm.jsx
+|   |       UtilitatiList.jsx
+|   |       
+|   \---ui
+|           button.jsx
+|           card.jsx
+|           toast.jsx
+|           toaster.jsx
+|           use-toast.jsx
+|           
++---context
+|       AuthContext.js
+|       ToastContext.jsx
+|       
++---hooks
+|       useNotification.jsx
+|       
+\---utils
+        formatters.js
+        

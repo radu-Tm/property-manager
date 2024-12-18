@@ -1,0 +1,69 @@
+continutul SRC:
+
+|   amplifyconfiguration.json
+|   App.css
+|   App.js
+|   App.test.js
+|   aws-exports.js
+|   FolderFilesList.txt
+|   font.css
+|   index.css
+|   index.js
+|   logo.svg
+|   reportWebVitals.js
+|   setupTests.js
+|   utils.js
+|   
++---components
+|   |   Header.jsx
+|   |   
+|   +---auth
+|   |       AuthComponent.jsx
+|   |       
+|   +---dashboard
+|   |       AddChiriasForm.jsx
+|   |       AddContractForm.jsx
+|   |       AddDocumentForm.jsx
+|   |       AddPropertyForm.jsx
+|   |       ChiriasDashboard.jsx
+|   |       EditContractForm.jsx
+|   |       EditPropertyForm.jsx
+|   |       FisaUtilitati.jsx
+|   |       NotificationsPanel.jsx
+|   |       PropertyDetails.jsx
+|   |       ProprietarDashboard.jsx
+|   |       UtilitatiForm.jsx
+|   |       UtilitatiList.jsx
+|   |       
+|   \---ui
+|           button.jsx
+|           card.jsx
+|           toast.jsx
+|           toaster.jsx
+|           use-toast.jsx
+|           
++---context
+|       AuthContext.js
+|       ToastContext.jsx
+|       
++---graphql
+|       mutations.js
+|       queries.js
+|       schema.json
+|       subscriptions.js
+|       
++---hooks
+|       useNotification.jsx
+|       
++---lib
+|       utils.js
+|       
++---models
+|       index.d.ts
+|       index.js
+|       schema.d.ts
+|       schema.js
+|       
+\---utils
+        formatters.js
+        

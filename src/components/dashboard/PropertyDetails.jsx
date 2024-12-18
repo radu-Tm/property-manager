@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Home, Users, Receipt, FileText, ClipboardCheck, Image } from 'lucide-react';
+import { Building2, Home, Users, Receipt, Pencil, Trash2, FileText, ClipboardCheck, Image } from 'lucide-react';
 import EditPropertyForm from './EditPropertyForm';
 import { useNotification } from '../../hooks/useNotification';
 import AddDocumentForm from './AddDocumentForm';
@@ -11,7 +11,6 @@ import { downloadData } from 'aws-amplify/storage';
 import { Download } from 'lucide-react';
 import { getUrl } from 'aws-amplify/storage';
 import AddContractForm from './AddContractForm';
-import { Pencil, Trash2 } from 'lucide-react';
 import EditContractForm from './EditContractForm';
 
 const client = generateClient();
@@ -46,6 +45,16 @@ const getProprietate = /* GraphQL */ `
           nume
           email
         }
+		plati {
+        id
+        data_plata
+        suma
+        tip
+        metoda_plata
+        numar_document
+        luna_platita
+        nota
+      }
       }
     }
   }
@@ -85,6 +94,164 @@ const getFacturiIstoricByDate = /* GraphQL */ `
   }
 `;
 
+const createPlata = /* GraphQL */ `
+  mutation CreatePlata($input: CreatePlataInput!) {
+    createPlata(input: $input) {
+      id
+      data_plata
+      suma
+      tip
+      metoda_plata
+      numar_document
+      luna_platita
+      nota
+    }
+  }
+`;
+
+
+const AdaugaPlataForm = ({ contract, onSuccess }) => {
+ const lunaCurenta = new Date().toISOString().slice(0, 7);
+ const [formData, setFormData] = useState({
+   data_plata: new Date().toISOString().split('T')[0],
+   suma: '',
+   tip: 'CHIRIE',
+   metoda_plata: 'TRANSFER',
+   numar_document: '',
+ luna_platita: `${lunaCurenta}-01`,
+   nota: ''
+ });
+ 
+
+ const [loading, setLoading] = useState(false);
+ const { showSuccess, showError } = useNotification();
+ const client = generateClient();
+
+ const handleSubmit = async (e) => {
+   e.preventDefault();
+   setLoading(true);
+
+   try {
+     await client.graphql({
+       query: createPlata,
+       variables: {
+         input: {
+           ...formData,
+           id_contract: contract.id,
+           suma: parseFloat(formData.suma)
+         }
+       }
+     });
+
+     showSuccess('Plata a fost înregistrată cu succes');
+     onSuccess?.();
+   } catch (error) {
+     console.error('Error:', error);
+     showError('Eroare la înregistrarea plății');
+   } finally {
+     setLoading(false);
+   }
+ };
+ return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Data Plată*</label>
+          <input
+            type="date"
+            value={formData.data_plata}
+            onChange={(e) => setFormData({...formData, data_plata: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Sumă*</label>
+          <input
+            type="number"
+            step="0.01"
+            value={formData.suma}
+            onChange={(e) => setFormData({...formData, suma: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Tip Plată*</label>
+          <select
+            value={formData.tip}
+            onChange={(e) => setFormData({...formData, tip: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="CHIRIE">Chirie</option>
+            <option value="UTILITATI">Utilități</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Metodă Plată*</label>
+          <select
+            value={formData.metoda_plata}
+            onChange={(e) => setFormData({...formData, metoda_plata: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="TRANSFER">Transfer Bancar</option>
+            <option value="NUMERAR">Numerar</option>
+            <option value="CARD">Card</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Număr Document</label>
+          <input
+            type="text"
+            value={formData.numar_document}
+            onChange={(e) => setFormData({...formData, numar_document: e.target.value})}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Luna Plătită*</label>
+  <input
+      type="month"
+      value={formData.luna_platita.slice(0, 7)} // Extragem doar YYYY-MM pentru afișare
+      onChange={(e) => {
+        const luna = e.target.value; // Obținem YYYY-MM
+        const lunaFormatata = `${luna}-01`; // Adăugăm ziua 01
+        setFormData({ ...formData, luna_platita: lunaFormatata }); // Actualizăm starea
+      }}
+      className="w-full p-2 border rounded"
+      required
+    />
+
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Notă</label>
+          <textarea
+            value={formData.nota}
+            onChange={(e) => setFormData({...formData, nota: e.target.value})}
+            className="w-full p-2 border rounded"
+            rows="2"
+          />
+        </div>
+      </div>
+
+      <Button 
+        type="submit"
+        disabled={loading}
+        className="w-full"
+      >
+        {loading ? 'Se înregistrează...' : 'Înregistrează Plata'}
+      </Button>
+    </form>
+  );
+};
 
 // Definim componenta ca o funcție, nu ca o constantă
 function PropertyDetails() {
@@ -104,7 +271,8 @@ function PropertyDetails() {
 const [selectedContract, setSelectedContract] = useState(null);
 const [showDeleteConfirmContract, setShowDeleteConfirmContract] = useState(false);
 const [contractToDelete, setContractToDelete] = useState(null);
-
+const [showAddPlata, setShowAddPlata] = useState(false);
+const [selectedContractForPlata, setSelectedContractForPlata] = useState(null);
 const handleEditContract = (contract) => {
   setSelectedContract(contract);
   setShowEditContract(true);
@@ -456,6 +624,17 @@ const IstoricFacturi = () => {
     <Trash2 className="h-4 w-4 mr-1" />
     Șterge
   </Button>
+  <Button 
+ variant="outline"
+ size="sm"
+ onClick={() => {
+   setSelectedContractForPlata(contract);
+   setShowAddPlata(true);
+ }}
+>
+ <Receipt className="h-4 w-4 mr-1" />
+ Adaugă Plată
+</Button>
 </div>
 			  
               {contract.Nota && (
@@ -652,6 +831,33 @@ const IstoricFacturi = () => {
       </CardContent>
     </Card>
   </div>
+)}
+
+{showAddPlata && selectedContractForPlata && (
+ <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+   <div className="bg-white rounded-lg max-w-2xl w-full">
+     <div className="p-6">
+       <div className="flex justify-between items-center mb-4">
+         <h3 className="text-lg font-semibold">
+           Adaugă Plată - Contract {selectedContractForPlata.numar_contract}
+         </h3>
+         <button 
+           onClick={() => setShowAddPlata(false)}
+           className="text-gray-500 hover:text-gray-700"
+         >
+           ✕
+         </button>
+       </div>
+       <AdaugaPlataForm 
+         contract={selectedContractForPlata}
+         onSuccess={() => {
+           setShowAddPlata(false);
+           fetchPropertyDetails();
+         }}
+       />
+     </div>
+   </div>
+ </div>
 )}
 
     </div>

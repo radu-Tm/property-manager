@@ -8,6 +8,7 @@ import NotificationsPanel from './NotificationsPanel';
 import AddPropertyForm from './AddPropertyForm';
 import FisaUtilitati from './FisaUtilitati';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../hooks/useNotification';
 
 const client = generateClient();
 
@@ -22,14 +23,14 @@ const listCladiri = /* GraphQL */ `
   }
 `;
 
-const listProprietati = /* GraphQL */ `
+const listProprietati = `
   query ListProprietati($email: String!) {
     listProprietati(email: $email) {
       items {
         id
         nume
         tip
-		releveu
+        releveu
         adresa
         nivel
         bai
@@ -41,9 +42,17 @@ const listProprietati = /* GraphQL */ `
           chirias {
             nume
           }
-		   restanta @include(if: true) {
-            suma_totala
-            rest_plata
+          restanta {
+            chirie {
+              suma_totala
+              suma_platita
+              rest_plata
+            }
+            utilitati {
+              suma_totala
+              suma_platita
+              rest_plata
+            }
           }
         }
       }
@@ -51,13 +60,26 @@ const listProprietati = /* GraphQL */ `
   }
 `;
 
+const createPlata = /* GraphQL */ `
+ mutation CreatePlata($input: CreatePlataInput!) {
+   createPlata(input: $input) {
+     id
+     data_plata
+     suma
+     tip
+     metoda_plata
+     numar_document
+     luna_platita
+     nota
+   }
+ }
+`;
 
 const PROPERTY_TYPES = ['Toate', 'Apartament', 'Casă', 'Comercial'];
 
 const PropertyCard = ({ proprietate }) => {
-  const navigate = useNavigate();
   const contractActiv = proprietate.contracte?.[0];
-  
+  const navigate = useNavigate();
   const formatNumber = (number) => {
     if (number === null || number === undefined) return '';
     return typeof number === 'number' ? number.toFixed(2) : number;
@@ -68,29 +90,37 @@ const PropertyCard = ({ proprietate }) => {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <KeyRound className="h-5 w-5 text-green-600" />
-         {contractActiv?.chirias && (
+          {contractActiv?.chirias && (
             <p className="text-gray-600 mt-1">
               {contractActiv.chirias.nume}
             </p>
           )}
-		  {!contractActiv?.chirias && (
+          {!contractActiv?.chirias && (
             <p className="text-gray-600 mt-1">
-             Spaţiu Gol
+              Spaţiu Gol
             </p>
           )}
         </CardTitle>
         <div className="flex justify-between text-sm text-gray-500">
-          <div>{proprietate.nume} </div><div className="flex items-center space-x-2"><CreditCard className="h-4 w-4 text-green-500" /><small>Chirie {formatNumber(contractActiv?.ChirieInitiala || 0)} EUR</small></div>
-          
+          <div>{proprietate.nume}</div>
+          <div className="flex items-center space-x-2">
+            <CreditCard className="h-4 w-4 text-green-500" />
+            <small>Chirie {formatNumber(contractActiv?.ChirieInitiala || 0)} EUR</small>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-4 mb-4">
-          {contractActiv?.restanta?.rest_plata !== undefined && (
+        <div className="grid grid-cols-1 gap-2 mb-4">
+       {contractActiv?.restanta?.chirie?.rest_plata > 0 && (
   <div className="flex items-center text-red-600 space-x-2">
-<HandCoins className="h-4 w-4 text-red-400" />   
-   <small>Restanțe {formatNumber(contractActiv.restanta.rest_plata)} RON
-    </small>
+    <HandCoins className="h-4 w-4 text-red-400" />   
+    <small>Restanțe chirie: {formatNumber(contractActiv.restanta.chirie.rest_plata)} EUR</small>
+  </div>
+)}
+{contractActiv?.restanta?.utilitati?.rest_plata > 0 && (
+  <div className="flex items-center text-red-600 space-x-2">
+    <HandCoins className="h-4 w-4 text-red-400" />   
+    <small>Restanțe utilități: {formatNumber(contractActiv.restanta.utilitati.rest_plata)} RON</small>
   </div>
 )}
         </div>
@@ -122,6 +152,7 @@ const ProprietarDashboard = () => {
   const [selectedCladire, setSelectedCladire] = useState(null);
   const [selectedLuna, setSelectedLuna] = useState(new Date().toISOString().slice(0, 7));
   const [showNotifications, setShowNotifications] = useState(false);
+  
 
   const handleCladireChange = (e) => {
     setSelectedCladire(e.target.value);
@@ -162,7 +193,142 @@ const fetchCladiri = async () => {
     console.error('Error fetching cladiri:', error);
   }
 };
+// PlataForm.jsx
+const AdaugaPlataForm = ({ contract, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    data_plata: new Date().toISOString().split('T')[0],
+    suma: '',
+    tip: 'CHIRIE',
+    metoda_plata: 'TRANSFER',
+    numar_document: '',
+    luna_platita: new Date().toISOString().slice(0, 7),
+    nota: ''
+  });
 
+  const [loading, setLoading] = useState(false);
+  const { showSuccess, showError } = useNotification();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      await client.graphql({
+        query: createPlata,
+        variables: {
+          input: {
+            ...formData,
+            id_contract: contract.id,
+            suma: parseFloat(formData.suma)
+          }
+        }
+      });
+
+      showSuccess('Plata a fost înregistrată cu succes');
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error:', error);
+      showError('Eroare la înregistrarea plății');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Data Plată*</label>
+          <input
+            type="date"
+            value={formData.data_plata}
+            onChange={(e) => setFormData({...formData, data_plata: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Sumă*</label>
+          <input
+            type="number"
+            step="0.01"
+            value={formData.suma}
+            onChange={(e) => setFormData({...formData, suma: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Tip Plată*</label>
+          <select
+            value={formData.tip}
+            onChange={(e) => setFormData({...formData, tip: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="CHIRIE">Chirie</option>
+            <option value="UTILITATI">Utilități</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Metodă Plată*</label>
+          <select
+            value={formData.metoda_plata}
+            onChange={(e) => setFormData({...formData, metoda_plata: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          >
+            <option value="TRANSFER">Transfer Bancar</option>
+            <option value="NUMERAR">Numerar</option>
+            <option value="CARD">Card</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Număr Document</label>
+          <input
+            type="text"
+            value={formData.numar_document}
+            onChange={(e) => setFormData({...formData, numar_document: e.target.value})}
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Luna Plătită*</label>
+          <input
+            type="month"
+            value={formData.luna_platita}
+            onChange={(e) => setFormData({...formData, luna_platita: e.target.value})}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1">Notă</label>
+          <textarea
+            value={formData.nota}
+            onChange={(e) => setFormData({...formData, nota: e.target.value})}
+            className="w-full p-2 border rounded"
+            rows="2"
+          />
+        </div>
+      </div>
+
+      <Button 
+        type="submit"
+        disabled={loading}
+        className="w-full"
+      >
+        {loading ? 'Se înregistrează...' : 'Înregistrează Plata'}
+      </Button>
+    </form>
+  );
+};
   useEffect(() => {
     fetchCladiri();
   }, []);
