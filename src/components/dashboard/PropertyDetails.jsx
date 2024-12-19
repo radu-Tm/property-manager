@@ -12,6 +12,9 @@ import { Download } from 'lucide-react';
 import { getUrl } from 'aws-amplify/storage';
 import AddContractForm from './AddContractForm';
 import EditContractForm from './EditContractForm';
+import pdfMake from "pdfmake/build/pdfmake";
+import "pdfmake/build/vfs_fonts";
+//pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
 const client = generateClient();
 
@@ -45,16 +48,16 @@ const getProprietate = /* GraphQL */ `
           nume
           email
         }
-		plati {
-        id
-        data_plata
-        suma
-        tip
-        metoda_plata
-        numar_document
-        luna_platita
-        nota
-      }
+		 plati {
+          id
+          data_plata
+          suma
+          tip
+          metoda_plata
+          numar_document 
+          luna_platita
+          nota
+        }
       }
     }
   }
@@ -105,6 +108,26 @@ const createPlata = /* GraphQL */ `
       numar_document
       luna_platita
       nota
+    }
+  }
+`;
+
+const getAnexaUtilitatiChirias = /* GraphQL */ `
+  query GetAnexaUtilitatiChirias($id_contract: ID!, $luna: String!) {
+    getAnexaUtilitatiChirias(id_contract: $id_contract, luna: $luna) {
+      chirias_nume
+      luna
+      facturi {
+        numar_factura
+        data_factura
+        perioada_start
+        perioada_end
+        suma_totala
+        cota_parte
+        tip
+      }
+      restante
+      total_luna
     }
   }
 `;
@@ -252,6 +275,111 @@ const AdaugaPlataForm = ({ contract, onSuccess }) => {
     </form>
   );
 };
+//pdfmake:
+const generatePDF = (data) => {
+  const docDefinition = {
+    content: [
+      {
+        text: `${data.chirias_nume}\n${data.luna}`,
+        alignment: 'left',
+        margin: [0, 0, 0, 20]
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+          body: [
+            ['Furnizor utilități', 'Nr factură/ data emiterii', 'Total sumă', 'Perioada consum cf. fact', 'Suma totală'],
+            ...data.facturi.map(f => [
+              f.tip,
+              `${f.numar_factura}\n${new Date(f.data_factura).toLocaleDateString('ro-RO')}`,
+              f.suma_totala.toFixed(2),
+              f.perioada_start ? `${new Date(f.perioada_start).toLocaleDateString('ro-RO')} - ${new Date(f.perioada_end).toLocaleDateString('ro-RO')}` : 'N/A',
+              f.cota_parte.toFixed(2)
+            ]),
+            ['', '', '', 'TOTAL', data.total_luna.toFixed(2)],
+            ['', '', '', 'Restanțe', data.restante.toFixed(2)],
+            ['', '', '', 'TOTAL GENERAL', (data.total_luna + data.restante).toFixed(2)]
+          ]
+        }
+      }
+    ],
+    defaultStyle: {
+      fontSize: 10
+    },
+    styles: {
+      header: {
+        fontSize: 12,
+        bold: true
+      }
+    }
+  };
+
+  pdfMake.createPdf(docDefinition).download(`Anexa_${data.luna}_${data.chirias_nume}.pdf`);
+};
+
+// Componenta pentru selectare lună și generare anexă
+const GenerareAnexa = ({ contract }) => {
+  const [lunaSelectata, setLunaSelectata] = useState(new Date().toISOString().slice(0, 7));
+  const { showSuccess, showError } = useNotification();
+  const [loading, setLoading] = useState(false);
+
+const handleGenerare = async () => {
+  setLoading(true);
+  try {
+    const result = await client.graphql({
+      query: getAnexaUtilitatiChirias,
+      variables: { 
+        id_contract: contract.id,
+        luna: lunaSelectata
+      }
+    });
+    
+    generatePDF(result.data.getAnexaUtilitatiChirias);
+    showSuccess('Anexă generată cu succes');
+  } catch (error) {
+    console.error('Error:', error);
+    showError('Eroare la generarea anexei');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Calculăm luna curentă și luna precedentă pentru limitare selector
+  const currentDate = new Date();
+  const maxDate = currentDate.toISOString().slice(0, 7);
+  const minDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth()).toISOString().slice(0, 7);
+
+  return (
+    <div className="flex items-center space-x-4 mt-4">
+      <input
+        type="month"
+        value={lunaSelectata}
+        onChange={(e) => setLunaSelectata(e.target.value)}
+        max={maxDate}
+        min={minDate}
+        className="border rounded p-2"
+      />
+      <Button 
+        onClick={handleGenerare}
+        disabled={loading}
+      >
+        {loading ? (
+          <span className="flex items-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Generare în curs...
+          </span>
+        ) : (
+          'Generează Anexă Utilități'
+        )}
+      </Button>
+    </div>
+  );
+};
+
 
 // Definim componenta ca o funcție, nu ca o constantă
 function PropertyDetails() {
@@ -462,7 +590,7 @@ const IstoricFacturi = () => {
       </div>
     );
   }
-
+//console.log('Property data:', property);
   return (
   <div className="p-8 max-w-7xl mx-auto">
     {/* Header */}
@@ -570,6 +698,7 @@ const IstoricFacturi = () => {
                   <p className="text-sm font-medium text-gray-500">Nr. Contract</p>
                   <p className="font-medium">{contract.numar_contract}</p>
                 </div>
+				
                 <div>
                   <p className="text-sm font-medium text-gray-500">Chiriaș</p>
                   <p className="font-medium">{contract.chirias?.nume}</p>
@@ -636,6 +765,10 @@ const IstoricFacturi = () => {
  Adaugă Plată
 </Button>
 </div>
+
+<div className="mt-4 border-t pt-4">
+                <GenerareAnexa contract={contract} />
+              </div>
 			  
               {contract.Nota && (
                 <div className="mt-4">
@@ -662,18 +795,73 @@ const IstoricFacturi = () => {
       </CardTitle>
     </CardHeader>
     <CardContent>
-      {property.chiriiColectate?.length > 0 ? (
-        <div className="space-y-2">
-          {property.chiriiColectate.map((plata, index) => (
-            <div key={index} className="flex justify-between p-2 border-b">
-              <span>{new Date(plata.data).toLocaleDateString('ro-RO')}</span>
-              <span className="font-medium">{plata.suma} RON</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-500">Nu există plăți înregistrate</p>
-      )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Plăți Chirie */}
+      <div>
+        <h3 className="font-medium mb-4">Chirii</h3>
+        {property.contracte?.[0]?.plati?.filter(plata => plata.tip === 'CHIRIE').length > 0 ? (
+		
+          <div className="space-y-2">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left pb-2">Data</th>
+                  <th className="text-right pb-2">Suma</th>
+                  <th className="text-right pb-2">Metoda</th>
+                </tr>
+              </thead>
+              <tbody>
+                {property.contracte[0].plati
+                  .filter(plata => plata.tip === 'CHIRIE')
+                  .sort((a, b) => new Date(b.data_plata) - new Date(a.data_plata))
+                  .map(plata => (
+                    <tr key={plata.id} className="border-b">
+                      <td className="py-2">{new Date(plata.data_plata).toLocaleDateString('ro-RO')}</td>
+                      <td className="text-right py-2">{plata.suma} EUR</td>
+                      <td className="text-right py-2">{plata.metoda_plata}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500">Nu există plăți de chirie înregistrate</p>
+        )}
+      </div>
+
+      {/* Plăți Utilități */}
+      <div>
+        <h3 className="font-medium mb-4">Utilități</h3>
+        {property.contracte?.[0]?.plati?.filter(plata => plata.tip === 'UTILITATI').length > 0 ? (
+          <div className="space-y-2">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left pb-2">Data</th>
+                  <th className="text-right pb-2">Suma</th>
+                  <th className="text-right pb-2">Metoda</th>
+                </tr>
+              </thead>
+              <tbody>
+                {property.contracte[0].plati
+                  .filter(plata => plata.tip === 'UTILITATI')
+                  .sort((a, b) => new Date(b.data_plata) - new Date(a.data_plata))
+                  .map(plata => (
+                    <tr key={plata.id} className="border-b">
+                      <td className="py-2">{new Date(plata.data_plata).toLocaleDateString('ro-RO')}</td>
+                      <td className="text-right py-2">{plata.suma} RON</td>
+                      <td className="text-right py-2">{plata.metoda_plata}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500">Nu există plăți de utilități înregistrate</p>
+        )}
+      </div>
+
+    </div>
     </CardContent>
   </Card>
 

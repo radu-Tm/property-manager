@@ -33,7 +33,13 @@ const getCotePartiFactura = /* GraphQL */ `
 // Componenta pentru modal cote părți
 const CotePartiModal = ({ factura, isOpen, onClose }) => {
   const [coteParti, setCoteParti] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    if (isOpen && factura) {
+      //console.log('Factura primită:', factura);
+      getCoteParti();
+    }
+  }, [isOpen, factura]);
 
   const getCoteParti = async () => {
     try {
@@ -41,11 +47,12 @@ const CotePartiModal = ({ factura, isOpen, onClose }) => {
         query: getCotePartiFactura,
         variables: { id_factura: factura.id }
       });
-      console.log('Cote parti response:', response.data.getCotePartiFactura);
+      //console.log('Response cote parti:', response.data.getCotePartiFactura);
       setCoteParti(response.data.getCotePartiFactura);
     } catch (error) {
       console.error('Error fetching cote parti:', error);
-    } finally {
+    }
+   finally {
       setLoading(false);
     }
   };

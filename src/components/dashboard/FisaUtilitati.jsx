@@ -77,7 +77,7 @@ const CotePartiModal = ({ factura, isOpen, onClose }) => {
         query: getCotePartiFactura,
         variables: { id_factura: factura.id }
       });
-      console.log('Cote parti response:', response.data.getCotePartiFactura);
+     // console.log('Cote parti response:', response.data.getCotePartiFactura);
       setCoteParti(response.data.getCotePartiFactura);
     } catch (error) {
       console.error('Error fetching cote parti:', error);
@@ -231,7 +231,7 @@ const AdaugaFacturaForm = ({ onSuccess }) => {
             } : {})
         };
 
-        console.log('Input being sent:', input); // Pentru debug
+       // console.log('Input being sent:', input); // Pentru debug
 
      if (formData.tip === 'ENERGIE' && formData.index_vechi && formData.index_nou) {
        input.index_vechi = parseFloat(formData.index_vechi);
