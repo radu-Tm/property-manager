@@ -4,7 +4,9 @@ import { signOut } from 'aws-amplify/auth';
 import { AuthComponent } from './components/auth/AuthComponent';
 import ProprietarDashboard from './components/dashboard/ProprietarDashboard';
 import ChiriasDashboard from './components/dashboard/ChiriasDashboard';
-import PropertyDetails from './components/dashboard/PropertyDetails'; // Adaugă acest import
+import PropertyDetails from './components/dashboard/PropertyDetails';
+import Contracte from './components/dashboard/Contracte';
+import Plati from './components/dashboard/Plati';
 import Header from './components/Header';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from "./components/ui/toaster";
@@ -46,7 +48,9 @@ const AppContent = () => {
             )
           } />
           <Route path="/property/:id" element={<PropertyDetails />} />
-        </Routes>
+		  <Route path="/contracte" element={<Contracte />} />
+		  <Route path="/plati" element={<Plati />} />
+		</Routes>
       </main>
     </div>
   );

@@ -9,6 +9,8 @@ import AddPropertyForm from './AddPropertyForm';
 import FisaUtilitati from './FisaUtilitati';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../hooks/useNotification';
+import pdfMake from "pdfmake/build/pdfmake";
+import "pdfmake/build/vfs_fonts";
 
 const client = generateClient();
 
@@ -75,6 +77,28 @@ const createPlata = /* GraphQL */ `
  }
 `;
 
+const getFacturiSiCoteParts = /* GraphQL */ `
+  query GetFacturiSiCoteParts($luna: String!) {
+    getFacturiSiCoteParts(luna: $luna) {
+      tip
+      numar_factura
+      data_factura
+      suma
+      perioada_start
+      perioada_end
+      cote_parti {
+        chirias_nume
+        suprafata
+        numar_persoane
+        suprafata_totala
+        total_persoane
+        suma
+        mod_calcul
+      }
+    }
+  }
+`;
+
 const PROPERTY_TYPES = ['Toate', 'Apartament', 'Casă', 'Comercial'];
 
 const PropertyCard = ({ proprietate }) => {
@@ -134,6 +158,116 @@ const PropertyCard = ({ proprietate }) => {
         </Button>
       </CardContent>
     </Card>
+  );
+};
+
+const GenerareRaportUtilitati = () => {
+  const [lunaSelectata, setLunaSelectata] = useState(new Date().toISOString().slice(0, 7));
+  const { showSuccess, showError } = useNotification();
+  const [loading, setLoading] = useState(false);
+
+  const generatePDF = (data) => {
+    // Grupăm facturile după tip
+       const tables = data.map(factura => ({
+        title: factura.tip,
+        header: [
+            'Chiriaș',
+            factura.tip === 'GAZ' || factura.tip === 'ENERGIE' ? 'Suprafață' : 'Nr. Persoane',
+            factura.tip === 'GAZ' || factura.tip === 'ENERGIE' ? 'Suprafață Totală' : 'Total Persoane',
+            'Valoare Totală',
+            'Cotă Parte'
+        ],
+        rows: [
+            ...factura.cote_parti.map(cp => [
+                cp.chirias_nume,
+                cp.mod_calcul === 'suprafata' ? cp.suprafata.toString() : cp.numar_persoane.toString(),
+                cp.mod_calcul === 'suprafata' ? cp.suprafata_totala.toString() : cp.total_persoane.toString(),
+                factura.suma.toFixed(2),
+                cp.suma.toFixed(2)
+            ]),
+            [
+                'Total',
+                '',
+                factura.cote_parti[0]?.mod_calcul === 'suprafata' ? 
+                    factura.cote_parti[0]?.suprafata_totala.toString() : 
+                    factura.cote_parti[0]?.total_persoane.toString(),
+                factura.suma.toFixed(2),
+                factura.cote_parti.reduce((sum, cp) => sum + cp.suma, 0).toFixed(2)
+            ]
+        ]
+    }));
+
+    const docDefinition = {
+        content: [
+            {
+                text: `Situație utilități - ${lunaSelectata}`,
+                style: 'header',
+                margin: [0, 0, 0, 20]
+            },
+            ...tables.map(table => [
+                { text: table.title, style: 'subheader', margin: [0, 10, 0, 5] },
+                {
+                    table: {
+                        headerRows: 1,
+                        widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+                        body: [
+                            table.header,
+                            ...table.rows
+                        ]
+                    },
+                    margin: [0, 0, 0, 20]
+                }
+            ])
+        ],
+        styles: {
+            header: {
+                fontSize: 18,
+                bold: true,
+                margin: [0, 0, 0, 10]
+            },
+            subheader: {
+                fontSize: 14,
+                bold: true,
+                margin: [0, 0, 0, 5]
+            }
+        }
+    };
+    pdfMake.createPdf(docDefinition).download(`Raport_Utilitati_${lunaSelectata}.pdf`);
+  };
+
+  const handleGenerare = async () => {
+    setLoading(true);
+    try {
+      const result = await client.graphql({
+        query: getFacturiSiCoteParts,
+        variables: { luna: lunaSelectata }
+      });
+      
+      generatePDF(result.data.getFacturiSiCoteParts);
+      showSuccess('Raport generat cu succes');
+    } catch (error) {
+      console.error('Error:', error);
+      showError('Eroare la generarea raportului');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center space-x-4">
+      <input
+        type="month"
+        value={lunaSelectata}
+        onChange={(e) => setLunaSelectata(e.target.value)}
+        className="border rounded p-2"
+      />
+      <Button 
+        onClick={handleGenerare}
+        disabled={loading}
+      >
+        {loading ? 'Generare...' : 'Generează Raport Utilități'}
+      </Button>
+    </div>
   );
 };
 
@@ -388,9 +522,13 @@ const AdaugaPlataForm = ({ contract, onSuccess }) => {
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Proprietățile Mele</h1>
-          <Button onClick={() => setShowAddForm(true)}>
-            Adaugă Proprietate
-          </Button>
+		  <div className="flex gap-4">
+      <GenerareRaportUtilitati />
+      <Button onClick={() => setShowAddForm(true)}>
+        Adaugă Proprietate
+      </Button>
+    </div>
+         
         </div>
 
         <div className="flex gap-4 mb-4">

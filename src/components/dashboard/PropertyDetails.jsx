@@ -276,9 +276,16 @@ const AdaugaPlataForm = ({ contract, onSuccess }) => {
   );
 };
 //pdfmake:
-const generatePDF = (data) => {
+const generatePDF = (data, nrFactura) => {
   const docDefinition = {
     content: [
+      {
+        text: `Anexa la Factura ${nrFactura}`,
+        alignment: 'left',
+        margin: [0, 0, 0, 10],
+        fontSize: 14,
+        bold: true
+      },
       {
         text: `${data.chirias_nume}\n${data.luna}`,
         alignment: 'left',
@@ -318,32 +325,32 @@ const generatePDF = (data) => {
   pdfMake.createPdf(docDefinition).download(`Anexa_${data.luna}_${data.chirias_nume}.pdf`);
 };
 
-// Componenta pentru selectare lună și generare anexă
 const GenerareAnexa = ({ contract }) => {
   const [lunaSelectata, setLunaSelectata] = useState(new Date().toISOString().slice(0, 7));
   const { showSuccess, showError } = useNotification();
   const [loading, setLoading] = useState(false);
+  const [numarFactura, setNumarFactura] = useState('');
 
-const handleGenerare = async () => {
-  setLoading(true);
-  try {
-    const result = await client.graphql({
-      query: getAnexaUtilitatiChirias,
-      variables: { 
-        id_contract: contract.id,
-        luna: lunaSelectata
-      }
-    });
-    
-    generatePDF(result.data.getAnexaUtilitatiChirias);
-    showSuccess('Anexă generată cu succes');
-  } catch (error) {
-    console.error('Error:', error);
-    showError('Eroare la generarea anexei');
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleGenerare = async () => {
+    setLoading(true);
+    try {
+      const result = await client.graphql({
+        query: getAnexaUtilitatiChirias,
+        variables: { 
+          id_contract: contract.id,
+          luna: lunaSelectata
+        }
+      });
+      
+      generatePDF(result.data.getAnexaUtilitatiChirias, numarFactura);
+      showSuccess('Anexă generată cu succes');
+    } catch (error) {
+      console.error('Error:', error);
+      showError('Eroare la generarea anexei');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculăm luna curentă și luna precedentă pentru limitare selector
   const currentDate = new Date();
@@ -351,32 +358,30 @@ const handleGenerare = async () => {
   const minDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth()).toISOString().slice(0, 7);
 
   return (
-    <div className="flex items-center space-x-4 mt-4">
-      <input
-        type="month"
-        value={lunaSelectata}
-        onChange={(e) => setLunaSelectata(e.target.value)}
-        max={maxDate}
-        min={minDate}
-        className="border rounded p-2"
-      />
-      <Button 
-        onClick={handleGenerare}
-        disabled={loading}
-      >
-        {loading ? (
-          <span className="flex items-center">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Generare în curs...
-          </span>
-        ) : (
-          'Generează Anexă Utilități'
-        )}
-      </Button>
-    </div>
+<div className="flex items-center space-x-3 mt-4">
+  <div>
+  <input
+    type="month"
+    value={lunaSelectata}
+    onChange={(e) => setLunaSelectata(e.target.value)}
+    max={maxDate}
+    min={minDate}
+    className="border rounded p-2"
+  />
+  <input
+    type="text"
+    value={numarFactura}
+    onChange={(e) => setNumarFactura(e.target.value)}
+    placeholder="Număr factură"
+    className="border rounded p-2"
+  /></div><div>
+  <Button 
+    onClick={handleGenerare}
+    disabled={loading}
+  >
+    {loading ? 'Generare în curs...' : 'Generează Anexă Utilități'}
+  </Button>
+</div></div>
   );
 };
 
