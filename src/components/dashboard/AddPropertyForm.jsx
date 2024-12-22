@@ -8,23 +8,23 @@ import { uploadData } from 'aws-amplify/storage';
 import { useNotification } from '../../hooks/useNotification';
 
 const createProprietate = /* GraphQL */ `
- mutation CreateProprietate($input: CreateProprietateInput!) {
-   createProprietate(input: $input) {
-     id
-     nume
-     tip
-	 releveu
-     adresa
-     nivel
-     bai
-     suprafata
-     inaltime
-     geamuri
-     nota
-     id_cladire
-	 id_proprietar
-   }
- }
+  mutation CreateProprietate($input: CreateProprietateInput!, $email: String!) {
+    createProprietate(input: $input, email: $email) {
+      id
+      nume
+      tip
+      releveu
+      adresa
+      nivel
+      bai
+      suprafata
+      inaltime
+      geamuri
+      nota
+      id_cladire
+      id_proprietar
+    }
+  }
 `;
 
 const listCladiri = /* GraphQL */ `
@@ -132,19 +132,23 @@ const handleImageUpload = async (e) => {
      const input = {
        nume: formData.nume,
        tip: formData.tip,
-       releveu:formData.releveu,
-	   adresa: formData.adresa,
-       id_cladire: formData.id_cladire || null,
-       nivel: formData.nivel ? parseInt(formData.nivel) : null,
+       releveu: formData.releveu,
+       adresa: formData.adresa,
+       nivel: formData.nivel,
        bai: formData.bai ? parseInt(formData.bai) : null,
        suprafata: formData.suprafata ? parseFloat(formData.suprafata) : null,
        inaltime: formData.inaltime ? parseFloat(formData.inaltime) : null,
-       geamuri: formData.geamuri
+       geamuri: formData.geamuri,
+       nota: formData.nota || null,
+       id_cladire: formData.id_cladire || null
      };
 
      const result = await client.graphql({
        query: createProprietate,
-       variables: { input }
+       variables: { 
+         input,
+         email: user.email  // adăugăm email-ul
+       }
      });
 
      onSuccess?.();
@@ -154,8 +158,7 @@ const handleImageUpload = async (e) => {
    } finally {
      setLoading(false);
    }
- };
-
+};
  return (
    <Card className="w-full max-w-2xl mx-auto">
      <CardHeader>

@@ -47,13 +47,13 @@ const navigate = useNavigate();
         {/* Meniu mobil */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t py-4 space-y-2">
-            <Button onClick={handleClick} variant="ghost" className="w-full justify-start">
+            <Button onClick={() => {setIsMobileMenuOpen(false); navigate(`/`)}} variant="ghost" className="w-full justify-start">
               Proprietăți
             </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate(`/contracte`)}>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => {setIsMobileMenuOpen(false); navigate(`/contracte`)}}>
               Contracte
             </Button>
-            <Button variant="ghost" className="w-full justify-start" onClick={() => navigate(`/plati`)}>
+            <Button variant="ghost" className="w-full justify-start" onClick={() => {setIsMobileMenuOpen(false);navigate(`/plati`)}}>
               Plăți
             </Button>
             <Button 

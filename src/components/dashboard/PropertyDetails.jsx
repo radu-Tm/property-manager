@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Building2, Home, Users, Receipt, Pencil, Trash2, FileText, ClipboardCheck, Image } from 'lucide-react';
+import { Building2, Users, Receipt, Pencil, Trash2, FileText, ClipboardCheck, Image } from 'lucide-react';
 import EditPropertyForm from './EditPropertyForm';
 import { useNotification } from '../../hooks/useNotification';
 import AddDocumentForm from './AddDocumentForm';
@@ -358,7 +358,15 @@ const GenerareAnexa = ({ contract }) => {
   const minDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth()).toISOString().slice(0, 7);
 
   return (
-<div className="flex items-center space-x-3 mt-4">
+<div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      textAlign: 'center',
+      flexDirection: 'column',
+	  margin: '50px',
+    }}>
+<h3>Generare Factura Utilitati Luna..</h3>
   <div>
   <input
     type="month"
@@ -367,19 +375,19 @@ const GenerareAnexa = ({ contract }) => {
     max={maxDate}
     min={minDate}
     className="border rounded p-2"
-  />
+  /></div><div>
   <input
     type="text"
     value={numarFactura}
     onChange={(e) => setNumarFactura(e.target.value)}
-    placeholder="Număr factură"
+    placeholder="Nr factură"
     className="border rounded p-2"
   /></div><div>
   <Button 
     onClick={handleGenerare}
     disabled={loading}
   >
-    {loading ? 'Generare în curs...' : 'Generează Anexă Utilități'}
+    {loading ? 'Generare în curs...' : 'Generează Anexa'}
   </Button>
 </div></div>
   );
@@ -603,9 +611,9 @@ const IstoricFacturi = () => {
       <div>
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Building2 className="h-8 w-8 text-blue-600" />
-          {property.nume}
+          {property.nume} 
         </h1>
-        <p className="text-gray-600 mt-2">{property.adresa}</p>
+        <p className="text-gray-600 mt-2">{property.adresa}, etaj {property.nivel}, suprafata {property.suprafata} m², tip:{property.tip}</p>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => setShowEditForm(true)}>
@@ -620,61 +628,7 @@ const IstoricFacturi = () => {
     {/* Main Content */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 	
-      {/* Releveu Card */}
-      {property?.releveu && (
-  <Card className="w-full">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <Image className="h-5 w-5" />
-        Releveu
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="w-full">
-        {imageUrl && (
-          <img 
-            src={imageUrl}
-            alt="Releveu proprietate"
-            className="w-full h-auto rounded-lg shadow-md"
-          />
-        )}
-      </div>
-    </CardContent>
-  </Card>
-)}
-      {/* Detalii generale Card */}
-      <Card className="w-full hover:shadow-lg transition-shadow">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Home className="h-5 w-5" />
-            Informații Generale
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-		<dl className="space-y-2">
-        <div className="flex justify-between">
-          <dt className="text-gray-600">Tip</dt>
-          <dd>{property.tip}</dd>
-        </div>
-        
-
-		
-		<div className="flex justify-between">
-          <dt className="text-gray-600">Nivel</dt>
-          <dd>{property.nivel}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-600">Băi</dt>
-          <dd>{property.bai}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-600">Suprafață</dt>
-          <dd>{property.suprafata} m²</dd>
-        </div>
-      </dl>
-    </CardContent>
-  </Card>
-
+  
   {/* Contracte */}
 <Card>
   <CardHeader>
@@ -683,13 +637,15 @@ const IstoricFacturi = () => {
         <Users className="h-5 w-5" />
         Contracte
       </CardTitle>
-      <Button 
+ {property.contracte?.length < 1 && (  
+	 <Button 
         variant="outline" 
         size="sm"
         onClick={() => setShowAddContract(true)}
       >
         Adaugă Contract
       </Button>
+ )}
     </div>
   </CardHeader>
   <CardContent>
@@ -758,31 +714,24 @@ const IstoricFacturi = () => {
     <Trash2 className="h-4 w-4 mr-1" />
     Șterge
   </Button>
-  <Button 
- variant="outline"
- size="sm"
- onClick={() => {
-   setSelectedContractForPlata(contract);
-   setShowAddPlata(true);
- }}
->
- <Receipt className="h-4 w-4 mr-1" />
- Adaugă Plată
-</Button>
+  
 </div>
 
-<div className="mt-4 border-t pt-4">
-                <GenerareAnexa contract={contract} />
-              </div>
-			  
-              {contract.Nota && (
+  {contract.Nota && (
                 <div className="mt-4">
                   <p className="text-sm font-medium text-gray-500">Notă</p>
                   <p className="text-sm mt-1">{contract.Nota}</p>
                 </div>
               )}
             </CardContent>
+
+<div>
+<hr />
+<GenerareAnexa contract={contract} />
+</div>
+
           </Card>
+
         ))}
       </div>
     ) : (
@@ -796,11 +745,37 @@ const IstoricFacturi = () => {
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
         <Receipt className="h-5 w-5" />
-        Istoric Plăți
+        Plăți
       </CardTitle>
     </CardHeader>
     <CardContent>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+{property.contracte.map(contract => (	
+	<div key={contract.id} className="mt-4 border-t pt-4">
+<Button 
+ variant="outline"
+ size="sm"
+ onClick={() => {
+   setSelectedContractForPlata(contract);
+   setShowAddPlata(true);
+ }}
+>
+ <Receipt className="h-4 w-4 mr-1" />
+ Adaugă Plată
+</Button>
+
+</div>
+))}	
+<div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      textAlign: 'center',
+      flexDirection: 'column',
+	  marginTop: '50px'
+}}>
+<h2 className="font-big gap-2 mb-4">Istoric Plăţi </h2>
+    </div><div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+	
       {/* Plăți Chirie */}
       <div>
         <h3 className="font-medium mb-4">Chirii</h3>
@@ -869,6 +844,30 @@ const IstoricFacturi = () => {
     </div>
     </CardContent>
   </Card>
+  
+        {/* Releveu Card */}
+      {property?.releveu && (
+  <Card className="w-full">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Image className="h-5 w-5" />
+        Releveu
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="w-full">
+        {imageUrl && (
+          <img 
+            src={imageUrl}
+            alt="Releveu proprietate"
+            className="w-full h-auto rounded-lg shadow-md"
+          />
+        )}
+      </div>
+    </CardContent>
+  </Card>
+)}
+  
 
   {/* Documente */}
 

@@ -30,7 +30,7 @@ const EditContractForm = ({ contract, onClose, onSuccess }) => {
     id: contract.id,
     numar_contract: contract.numar_contract || '',
     DataInceput: contract.DataInceput || '',
-    Durata: contract.Durata || 12,
+    Durata: contract.Durata || '',
     CrestereProcent: contract.CrestereProcent || 0,
     ChirieInitiala: contract.ChirieInitiala || '',
     plata_curent: contract.plata_curent || 'pausal',
@@ -39,21 +39,31 @@ const EditContractForm = ({ contract, onClose, onSuccess }) => {
     numar_locuri_parcare: contract.numar_locuri_parcare || 0,
     Nota: contract.Nota || ''
   });
+  
 
   const [loading, setLoading] = useState(false);
   const { showSuccess, showError } = useNotification();
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await client.graphql({
+      // Calculăm data de sfârșit în funcție de data de început și durata
+      const startDate = new Date(formData.DataInceput);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + parseInt(formData.Durata));
+      
+      const result = await client.graphql({
         query: updateContract,
-        variables: { input: formData }
+        variables: { 
+          input: {
+            ...formData,
+            DataSfarsit: endDate.toISOString().split('T')[0]  // formatăm data ca YYYY-MM-DD
+          }
+        }
       });
 
-      showSuccess('Contractul a fost actualizat cu succes!');
+      showSuccess('Contractul a fost actualizat cu succes');
       onSuccess();
     } catch (error) {
       console.error('Error updating contract:', error);
@@ -61,10 +71,11 @@ const EditContractForm = ({ contract, onClose, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
-
+};
+console.log('Contract primit:', contract);
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+   
+   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader>
           <CardTitle>Editare Contract</CardTitle>
@@ -91,7 +102,7 @@ const EditContractForm = ({ contract, onClose, onSuccess }) => {
                 </label>
                 <input
                   type="date"
-                  value={formData.DataInceput}
+                  value={formData.DataInceput.slice(0, 10)} 
                   onChange={(e) => setFormData({...formData, DataInceput: e.target.value})}
                   className="w-full p-2 border rounded"
                   required
