@@ -21,17 +21,15 @@ const listChiriasi = /* GraphQL */ `
 `;
 
 const createContract = /* GraphQL */ `
-  mutation CreateContract(
-    $input: CreateContractInput!
-  ) {
+  mutation CreateContract($input: CreateContractInput!) {
     createContract(input: $input) {
       id
       numar_contract
       IDProprietate
       IDChirias
       DataInceput
-      Durata
       DataSfarsit
+      Durata
       CrestereProcent
       ChirieInitiala
       plata_curent
@@ -39,6 +37,20 @@ const createContract = /* GraphQL */ `
       termen_plata
       numar_locuri_parcare
       Nota
+      procent_comune
+    }
+  }
+`;
+
+const createContorCitire = /* GraphQL */ `
+  mutation CreateContorCitire($input: CreateContorCitireInput!) {
+    createContorCitire(input: $input) {
+      id
+      id_contract
+      tip
+      data_citire
+      index_vechi
+      index_nou
     }
   }
 `;
@@ -49,8 +61,13 @@ const AddContractForm = ({ propertyId, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [showAddChirias, setShowAddChirias] = useState(false);
   const { showSuccess, showError } = useNotification();
+   const handleKeyDown = (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+   }}
 const [formData, setFormData] = useState({
   numar_contract: '',
+  IDProprietate: propertyId, 
   IDChirias: '',
   DataInceput: new Date().toISOString().split('T')[0],
   Durata: 12,
@@ -60,6 +77,8 @@ const [formData, setFormData] = useState({
   numar_persoane: 1,
   termen_plata: 1,  // valoare default
   numar_locuri_parcare: 0,
+  procent_comune: 1.0,
+  index_initial: '',
   Nota: ''
 });
   useEffect(() => {
@@ -78,37 +97,76 @@ const [formData, setFormData] = useState({
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
 
-    try {
-      const input = {
-        ...formData,
-        IDProprietate: propertyId,
-        DataSfarsit: calculateEndDate(formData.DataInceput, formData.Durata)
-      };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // Eliminăm index_initial din input pentru contract
+    const { index_initial, ...contractInput } = formData;
+  
+	const { DataSfarsit, ...input } = {
+      numar_contract: formData.numar_contract,
+      IDProprietate: formData.IDProprietate,
+      IDChirias: formData.IDChirias,
+      DataInceput: formData.DataInceput,
+      Durata: formData.Durata,
+      CrestereProcent: formData.CrestereProcent,
+      ChirieInitiala: formData.ChirieInitiala,
+      plata_curent: formData.plata_curent,
+      numar_persoane: formData.numar_persoane,
+      termen_plata: formData.termen_plata,
+      numar_locuri_parcare: formData.numar_locuri_parcare,
+      Nota: formData.Nota,
+      procent_comune: formData.procent_comune,
+      index_initial: formData.index_initial
+    };
+	//  console.log('FormData before submit:', formData);  // să vedem ce trimitem
 
-      await client.graphql({
-        query: createContract,
-        variables: { input }
-      });
 
-      showSuccess('Contractul a fost adăugat cu succes!');
-      onSuccess();
-    } catch (error) {
-      console.error('Error creating contract:', error);
-      showError('Nu s-a putut crea contractul. Vă rugăm încercați din nou.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  //  console.log('Input to be sent:', input);
+
+    const result = await client.graphql({
+      query: createContract,
+      variables: { input }
+    });
+
+    // Debug pentru a vedea ce primim
+   // console.log('Contract creat:', result.data.createContract);
+
+    // Verificăm dacă avem id valid
+  //  const contractId = result.data.createContract?.id;
+  //  if (formData.plata_curent === 'contor' && index_initial && contractId) {
+  //    await client.graphql({
+  //      query: createContorCitire,
+  //      variables: { 
+  //        input: {
+  //          id_contract: contractId,
+  //          tip: 'Curent',
+  //          data_citire: formData.DataInceput,
+  //          index_vechi: parseFloat(index_initial),
+  //          index_nou: parseFloat(index_initial)
+  //        }
+  //      }
+  //    });
+  //  }
+
+    showSuccess('Contractul a fost adăugat cu succes!');
+    onSuccess();
+  } catch (error) {
+    console.error('Error creating contract:', error);
+    showError('Nu s-a putut crea contractul. Vă rugăm încercați din nou.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const calculateEndDate = (startDate, duration) => {
     const date = new Date(startDate);
     date.setMonth(date.getMonth() + duration);
     return date.toISOString().split('T')[0];
   };
+  
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -180,6 +238,7 @@ const [formData, setFormData] = useState({
                 <input
                   type="number"
                   value={formData.Durata}
+				onKeyDown={handleKeyDown}
                   onChange={(e) => setFormData({...formData, Durata: parseInt(e.target.value)})}
                   className="w-full p-2 border rounded"
                   min="1"
@@ -193,13 +252,13 @@ const [formData, setFormData] = useState({
                 </label>
                <input
   type="number"
+  onKeyDown={handleKeyDown}
   value={formData.ChirieInitiala || ''}  // folosim string gol dacă e undefined
   onChange={(e) => setFormData({
     ...formData, 
     ChirieInitiala: e.target.value ? parseFloat(e.target.value) : ''
   })}
   className="w-full p-2 border rounded"
-  step="0.01"
   required
 />
 
@@ -211,11 +270,11 @@ const [formData, setFormData] = useState({
                 </label>
                 <input
                   type="number"
+				  onKeyDown={handleKeyDown}
                   value={formData.CrestereProcent}
                   onChange={(e) => setFormData({...formData, CrestereProcent: parseFloat(e.target.value)})}
                   className="w-full p-2 border rounded"
-                  step="0.1"
-                />
+				  />
               </div>
 
               <div>
@@ -239,6 +298,7 @@ const [formData, setFormData] = useState({
                 </label>
                <input
   type="number"
+  onKeyDown={handleKeyDown}
   value={formData.numar_persoane || 1}
   onChange={(e) => setFormData({
     ...formData, 
@@ -256,6 +316,7 @@ const [formData, setFormData] = useState({
                 </label>
                 <input
   type="number"
+  onKeyDown={handleKeyDown}
   value={formData.termen_plata || 1}
   onChange={(e) => setFormData({
     ...formData, 
@@ -267,13 +328,44 @@ const [formData, setFormData] = useState({
   required
 />
               </div>
-
+{formData.plata_curent === 'contor' && (
+  <>
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        Procent părți comune (%)
+      </label>
+      <input
+        type="number"
+		onKeyDown={handleKeyDown}
+        value={formData.procent_comune}
+        onChange={(e) => setFormData({...formData, procent_comune: parseFloat(e.target.value)})}
+        className="w-full p-2 border rounded"
+        min="0"
+        max="100"
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        Index contor la începutul contractului*
+      </label>
+      <input
+        type="number"
+		onKeyDown={handleKeyDown}
+        value={formData.index_initial}
+        onChange={(e) => setFormData({...formData, index_initial: parseFloat(e.target.value)})}
+        className="w-full p-2 border rounded"
+        required={formData.plata_curent === 'contor'}
+      />
+    </div>
+  </>
+)}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Număr Locuri Parcare
                 </label>
                 <input
   type="number"
+  onKeyDown={handleKeyDown}
   value={formData.numar_locuri_parcare || 0}
   onChange={(e) => setFormData({
     ...formData, 

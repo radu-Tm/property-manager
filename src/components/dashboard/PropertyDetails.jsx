@@ -30,6 +30,7 @@ const getProprietate = /* GraphQL */ `
       bai
       suprafata
       nota
+	  id_cladire
       contracte {
         id
         numar_contract
@@ -39,6 +40,7 @@ const getProprietate = /* GraphQL */ `
         CrestereProcent
         ChirieInitiala
         plata_curent
+		index_initial 
         numar_persoane
         termen_plata
         numar_locuri_parcare
@@ -132,6 +134,27 @@ const getAnexaUtilitatiChirias = /* GraphQL */ `
   }
 `;
 
+const getContorCitiri = /* GraphQL */ `
+  query GetContorCitiri($id_contract: ID!) {
+    getContorCitiri(id_contract: $id_contract) {
+      id
+      data_citire 
+      index_vechi
+      index_nou
+    }
+  }
+`;
+
+const createContorCitire = /* GraphQL */ `
+  mutation CreateContorCitire($input: CreateContorCitireInput!) {
+    createContorCitire(input: $input) {
+      id
+      data_citire
+      index_vechi
+      index_nou
+    }
+  }
+`;
 
 const AdaugaPlataForm = ({ contract, onSuccess }) => {
  const lunaCurenta = new Date().toISOString().slice(0, 7);
@@ -414,6 +437,67 @@ const [showDeleteConfirmContract, setShowDeleteConfirmContract] = useState(false
 const [contractToDelete, setContractToDelete] = useState(null);
 const [showAddPlata, setShowAddPlata] = useState(false);
 const [selectedContractForPlata, setSelectedContractForPlata] = useState(null);
+  const [citiri, setCitiri] = useState([]);
+  const [newIndex, setNewIndex] = useState('');
+  const [loadingCitiri, setLoadingCitiri] = useState(false);
+  //const [selectedContract, setSelectedContract] = useState(null);
+
+  const fetchCitiri = async (contractId) => {
+    if (!contractId) return;
+    try {
+      const result = await client.graphql({
+        query: getContorCitiri,
+        variables: { id_contract: contractId }
+      });
+      setCitiri(result.data.getContorCitiri);
+    } catch (error) {
+      console.error('Error fetching citiri:', error);
+      showError('Nu s-au putut încărca citirile');
+    }
+  };
+
+  const handleSubmitCitire = async (e, contract) => {
+    e.preventDefault();
+    if (!contract) return;
+    setLoadingCitiri(true);
+
+    try {
+      const lastCitire = citiri[0];
+      
+      await client.graphql({
+        query: createContorCitire,
+        variables: {
+          input: {
+            id_contract: contract.id,
+            tip: 'Curent',
+            data_citire: new Date().toISOString().split('T')[0],
+            index_vechi: lastCitire ? lastCitire.index_nou : contract.index_initial,
+            index_nou: parseFloat(newIndex)
+          }
+        }
+      });
+
+      showSuccess('Citirea a fost înregistrată cu succes');
+      setNewIndex('');
+      fetchCitiri(contract.id);
+    } catch (error) {
+      console.error('Error creating citire:', error);
+      showError('Nu s-a putut înregistra citirea');
+    } finally {
+      setLoadingCitiri(false);
+    }
+  };
+
+  useEffect(() => {
+    if (property?.contracte) {
+      const contorContract = property.contracte.find(c => c.plata_curent === 'contor');
+      if (contorContract) {
+        setSelectedContract(contorContract);
+        fetchCitiri(contorContract.id);
+      }
+    }
+  }, [property]);
+
 const handleEditContract = (contract) => {
   setSelectedContract(contract);
   setShowEditContract(true);
@@ -461,6 +545,8 @@ const handleDeleteContract = (contractId) => {
       setLoading(false);
     }
   };
+  
+
 
   const handleDelete = async () => {
     try {
@@ -691,7 +777,11 @@ const IstoricFacturi = () => {
                   <p className="text-sm font-medium text-gray-500">Plată Curent</p>
                   <p className="font-medium">{contract.plata_curent === 'pausal' ? 'Paușal' : 'Contor'}</p>
                 </div>
-                <div>
+				 <div>
+                  <p className="text-sm font-medium text-gray-500">Index la Preluare</p>
+                  <p className="font-medium">{contract.index_initial}</p>
+                </div>
+				<div>
                   <p className="text-sm font-medium text-gray-500">Locuri Parcare</p>
                   <p className="font-medium">{contract.numar_locuri_parcare}</p>
                 </div>
@@ -739,6 +829,72 @@ const IstoricFacturi = () => {
     )}
   </CardContent>
 </Card>
+
+{/* Card Citire Contor */}
+{selectedContract && (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <FileText className="h-5 w-5" />
+        Citire Contor
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-6">
+        <form onSubmit={(e) => handleSubmitCitire(e, selectedContract)} className="space-y-4">
+          
+  <div>
+    <label className="block text-sm font-medium mb-1">Index Nou*</label>
+    <input
+      type="number"
+      value={newIndex}
+      onChange={(e) => setNewIndex(e.target.value)}
+      className="w-full p-2 border rounded"
+      required
+    />
+  </div>
+  <Button 
+    type="submit"
+    disabled={loadingCitiri}
+  >
+    {loadingCitiri ? 'Se înregistrează...' : 'Înregistrează Citire'}
+  </Button>
+</form>
+
+        {/* Istoric citiri */}
+        <div className="mt-6">
+          <h3 className="text-lg font-medium mb-4">Istoric Citiri</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left">Data Citire</th>
+                  <th className="px-4 py-2 text-right">Index Vechi</th>
+                  <th className="px-4 py-2 text-right">Index Nou</th>
+                  <th className="px-4 py-2 text-right">Consum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {citiri.map(citire => (
+                  <tr key={citire.id} className="border-t">
+                    <td className="px-4 py-2">
+                      {new Date(citire.data_citire).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">{citire.index_vechi}</td>
+                    <td className="px-4 py-2 text-right">{citire.index_nou}</td>
+                    <td className="px-4 py-2 text-right">
+                      {(citire.index_nou - citire.index_vechi).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)}
 
   {/* Plăți */}
   <Card>

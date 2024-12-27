@@ -162,7 +162,7 @@ const AdaugaFacturaForm = ({ onSuccess }) => {
   const { user } = useAuth();
 
   const [formData, setFormData] = useState({
-    id_cladire: '',
+    id_cladire: '3',
     tip: 'RETIM',
     numar_factura: '',
     data_factura: '',
@@ -245,7 +245,7 @@ const AdaugaFacturaForm = ({ onSuccess }) => {
 
      showSuccess('Factura a fost adăugată cu succes');
      setFormData({
-	   id_cladire: formData.id_cladire,
+	   id_cladire: '',
        tip: 'RETIM',
        numar_factura: '',
        data_factura: '',
