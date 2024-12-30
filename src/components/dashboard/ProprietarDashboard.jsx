@@ -80,20 +80,25 @@ const createPlata = /* GraphQL */ `
 const getFacturiSiCoteParts = /* GraphQL */ `
   query GetFacturiSiCoteParts($luna: String!) {
     getFacturiSiCoteParts(luna: $luna) {
-      tip
-      numar_factura
-      data_factura
-      suma
-      perioada_start
-      perioada_end
-      cote_parti {
-        chirias_nume
-        suprafata
-        numar_persoane
-        suprafata_totala
-        total_persoane
+      items {
+        tip
+        numar_factura
+        data_factura
         suma
-        mod_calcul
+        perioada_start
+        perioada_end
+        cote_parti {
+          chirias_nume
+          suprafata
+          numar_persoane
+          suprafata_totala
+          total_persoane
+          suma
+          mod_calcul
+          consum_individual
+          suma_consum
+          suma_comune
+        }
       }
     }
   }
@@ -165,37 +170,127 @@ const GenerareRaportUtilitati = () => {
   const [lunaSelectata, setLunaSelectata] = useState(new Date().toISOString().slice(0, 7));
   const { showSuccess, showError } = useNotification();
   const [loading, setLoading] = useState(false);
+const generatePDF = (data) => {
+    const tables = data.map(factura => {
+        if (factura.tip === 'ENERGIE') {
+            const chiriasi_contor = factura.cote_parti.filter(cp => cp.mod_calcul === 'contor');
+            const chiriasi_pausal = factura.cote_parti.filter(cp => cp.mod_calcul === 'suprafata');
 
-  const generatePDF = (data) => {
-    // Grupăm facturile după tip
-       const tables = data.map(factura => ({
-        title: factura.tip,
-        header: [
-            'Chiriaș',
-            factura.tip === 'GAZ' || factura.tip === 'ENERGIE' ? 'Suprafață' : 'Nr. Persoane',
-            factura.tip === 'GAZ' || factura.tip === 'ENERGIE' ? 'Suprafață Totală' : 'Total Persoane',
-            'Valoare Totală',
-            'Cotă Parte'
-        ],
-        rows: [
-            ...factura.cote_parti.map(cp => [
-                cp.chirias_nume,
-                cp.mod_calcul === 'suprafata' ? cp.suprafata.toString() : cp.numar_persoane.toString(),
-                cp.mod_calcul === 'suprafata' ? cp.suprafata_totala.toString() : cp.total_persoane.toString(),
-                factura.suma.toFixed(2),
-                cp.suma.toFixed(2)
-            ]),
-            [
-                'Total',
+            const header_contor = [
+                'Chiriaș',
+                'Consum (kW)',
+                'Valoare Consum',
+                'Cotă Comune',
+                'Total'
+            ];
+
+            const header_pausal = [
+                'Chiriaș',
+                'Suprafață',
+                'Suprafață Totală',
+                'Val. Rămasă',
+                'Cotă Parte'
+            ];
+
+            const rows = [];
+            
+            if (chiriasi_contor.length > 0) {
+                rows.push([{ text: 'PLATĂ CONTORIZATĂ', style: 'subheader', colSpan: 5 }, '', '', '', '']);
+                rows.push(header_contor);
+                chiriasi_contor.forEach(cp => {
+                    rows.push([
+                        cp.chirias_nume,
+                        cp.consum_individual?.toFixed(2) || '',
+                        cp.suma_consum?.toFixed(2) || '',
+                        cp.suma_comune?.toFixed(2) || '',
+                        cp.suma?.toFixed(2) || ''
+                    ]);
+                });
+
+                // Subtotal pentru contorizare
+                const subtotal_contor = chiriasi_contor.reduce((sum, cp) => sum + cp.suma, 0);
+                rows.push([
+                    'Subtotal Contor',
+                    '',
+                    '',
+                    '',
+                    subtotal_contor.toFixed(2)
+                ]);
+            }
+
+            if (chiriasi_pausal.length > 0) {
+                if (chiriasi_contor.length > 0) {
+                    rows.push([{ text: '', colSpan: 5 }, '', '', '', '']);
+                }
+                rows.push([{ text: 'PLATĂ PAUȘALĂ', style: 'subheader', colSpan: 5 }, '', '', '', '']);
+                rows.push(header_pausal);
+                chiriasi_pausal.forEach(cp => {
+                    rows.push([
+                        cp.chirias_nume,
+                        cp.suprafata?.toString() || '',
+                        cp.suprafata_totala?.toString() || '',
+                        factura.suma?.toFixed(2) || '',
+                        cp.suma?.toFixed(2) || ''
+                    ]);
+                });
+
+                // Subtotal pentru pausal
+                const subtotal_pausal = chiriasi_pausal.reduce((sum, cp) => sum + cp.suma, 0);
+                rows.push([
+                    'Subtotal Paușal',
+                    '',
+                    '',
+                    '',
+                    subtotal_pausal.toFixed(2)
+                ]);
+            }
+
+            // Total general
+            const total_suma = factura.cote_parti.reduce((sum, cp) => sum + cp.suma, 0);
+            rows.push([
+                'TOTAL GENERAL',
                 '',
-                factura.cote_parti[0]?.mod_calcul === 'suprafata' ? 
-                    factura.cote_parti[0]?.suprafata_totala.toString() : 
-                    factura.cote_parti[0]?.total_persoane.toString(),
-                factura.suma.toFixed(2),
-                factura.cote_parti.reduce((sum, cp) => sum + cp.suma, 0).toFixed(2)
-            ]
-        ]
-    }));
+                '',
+                factura.suma?.toFixed(2) || '',
+                total_suma.toFixed(2)
+            ]);
+
+            return {
+                title: factura.tip,
+                rows: rows
+            };
+        } else {
+            // Pentru celelalte tipuri de facturi
+            return {
+                title: factura.tip,
+                header: [
+                    'Chiriaș',
+                    ['GAZ', 'ENERGIE'].includes(factura.tip) ? 'Suprafață' : 'Nr. Persoane',
+                    ['GAZ', 'ENERGIE'].includes(factura.tip) ? 'Suprafață Totală' : 'Total Persoane',
+                    'Valoare Totală',
+                    'Cotă Parte'
+                ],
+                rows: [
+                    ...factura.cote_parti.map(cp => [
+                        cp.chirias_nume,
+                        cp.mod_calcul === 'suprafata' ? cp.suprafata?.toString() || '' : cp.numar_persoane?.toString() || '',
+                        cp.mod_calcul === 'suprafata' ? cp.suprafata_totala?.toString() || '' : cp.total_persoane?.toString() || '',
+                        factura.suma?.toFixed(2) || '',
+                        cp.suma?.toFixed(2) || ''
+                    ]),
+                    [
+                        'Total',
+                        '',
+                        factura.cote_parti[0]?.mod_calcul === 'suprafata' ? 
+                            factura.cote_parti[0]?.suprafata_totala?.toString() || '' : 
+                            factura.cote_parti[0]?.total_persoane?.toString() || '',
+                        factura.suma?.toFixed(2) || '',
+                        factura.cote_parti.reduce((sum, cp) => sum + cp.suma, 0).toFixed(2)
+                    ]
+                ]
+            };
+        }
+    });
 
     const docDefinition = {
         content: [
@@ -210,10 +305,7 @@ const GenerareRaportUtilitati = () => {
                     table: {
                         headerRows: 1,
                         widths: ['*', 'auto', 'auto', 'auto', 'auto'],
-                        body: [
-                            table.header,
-                            ...table.rows
-                        ]
+                        body: table.header ? [table.header, ...table.rows] : table.rows
                     },
                     margin: [0, 0, 0, 20]
                 }
@@ -232,10 +324,11 @@ const GenerareRaportUtilitati = () => {
             }
         }
     };
-    pdfMake.createPdf(docDefinition).download(`Raport_Utilitati_${lunaSelectata}.pdf`);
-  };
 
-  const handleGenerare = async () => {
+    pdfMake.createPdf(docDefinition).download(`Raport_Utilitati_${lunaSelectata}.pdf`);
+};
+
+const handleGenerare = async () => {
     setLoading(true);
     try {
       const result = await client.graphql({
@@ -243,7 +336,8 @@ const GenerareRaportUtilitati = () => {
         variables: { luna: lunaSelectata }
       });
       
-      generatePDF(result.data.getFacturiSiCoteParts);
+      // Modificare aici - accesăm items din rezultat
+      generatePDF(result.data.getFacturiSiCoteParts.items);
       showSuccess('Raport generat cu succes');
     } catch (error) {
       console.error('Error:', error);
@@ -251,7 +345,7 @@ const GenerareRaportUtilitati = () => {
     } finally {
       setLoading(false);
     }
-  };
+};
 
   return (
     <div className="flex items-center space-x-4">

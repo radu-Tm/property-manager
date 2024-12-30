@@ -59,13 +59,19 @@ const getCotePartiFactura = /* GraphQL */ `
     getCotePartiFactura(id_factura: $id_factura) {
       id_contract
       id_factura
+      chirias_nume
+      suprafata
+      numar_persoane
+      suprafata_totala
+      total_persoane
       suma
       mod_calcul
-      chirias_nume
+      consum_individual
+      suma_consum
+      suma_comune
     }
   }
 `;
-
 // Componenta pentru modal cote părți
 const CotePartiModal = ({ factura, isOpen, onClose }) => {
   const [coteParti, setCoteParti] = useState([]);
@@ -77,7 +83,7 @@ const CotePartiModal = ({ factura, isOpen, onClose }) => {
         query: getCotePartiFactura,
         variables: { id_factura: factura.id }
       });
-     // console.log('Cote parti response:', response.data.getCotePartiFactura);
+      console.log('Raw response cote parti:', response.data.getCotePartiFactura);
       setCoteParti(response.data.getCotePartiFactura);
     } catch (error) {
       console.error('Error fetching cote parti:', error);
@@ -104,9 +110,6 @@ const CotePartiModal = ({ factura, isOpen, onClose }) => {
               <p className="text-sm text-gray-500">
                 Factura nr. {factura.numar_factura} din {new Date(factura.data_factura).toLocaleDateString()}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Mod calcul: {coteParti[0]?.mod_calcul === 'suprafata' ? 'După suprafață' : 'După număr persoane'}
-              </p>
             </div>
             <button 
               onClick={onClose}
@@ -122,32 +125,106 @@ const CotePartiModal = ({ factura, isOpen, onClose }) => {
             </div>
           ) : (
             <div className="mt-4">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="text-left p-3">Chiriaș</th>
-                    <th className="text-right p-3">Procent</th>
-                    <th className="text-right p-3">Sumă</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {coteParti.map((cota, index) => (
-                    <tr key={cota.id_contract} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className="p-3">{cota.chirias_nume}</td>
-                      <td className="text-right p-3">
-                        {((cota.suma / factura.suma) * 100).toFixed(2)}%
-                      </td>
-                      <td className="text-right p-3">{cota.suma.toFixed(2)} RON</td>
+              {factura.tip === 'ENERGIE' ? (
+                <>
+                  {/* Contracte cu contor */}
+                  {coteParti.some(cp => cp.mod_calcul === 'contor') && (
+                    <>
+                      <h4 className="font-semibold mb-2">Plată Contorizată</h4>
+                      <table className="w-full mb-4">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-3">Chiriaș</th>
+                            <th className="text-right p-3">Consum (kW)</th>
+                            <th className="text-right p-3">Sumă Consum</th>
+                            <th className="text-right p-3">Sumă Comune</th>
+                            <th className="text-right p-3">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {coteParti
+                            .filter(cp => cp.mod_calcul === 'contor')
+                            .map((cota, index) => (
+                              <tr key={`contor-${index}`} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="p-3">{cota.chirias_nume}</td>
+                                <td className="text-right p-3">{cota.consum_individual?.toFixed(2)}</td>
+                                <td className="text-right p-3">{cota.suma_consum?.toFixed(2)}</td>
+                                <td className="text-right p-3">{cota.suma_comune?.toFixed(2)}</td>
+                                <td className="text-right p-3">{cota.suma.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+
+                  {/* Contracte la paușal */}
+                  {coteParti.some(cp => cp.mod_calcul === 'suprafata') && (
+                    <>
+                      <h4 className="font-semibold mb-2">Plată Paușală</h4>
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-3">Chiriaș</th>
+                            <th className="text-right p-3">Suprafață</th>
+                            <th className="text-right p-3">Total Suprafață</th>
+                            <th className="text-right p-3">Sumă</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {coteParti
+                            .filter(cp => cp.mod_calcul === 'suprafata')
+                            .map((cota, index) => (
+                              <tr key={`pausal-${index}`} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                                <td className="p-3">{cota.chirias_nume}</td>
+                                <td className="text-right p-3">{cota.suprafata}</td>
+                                <td className="text-right p-3">{cota.suprafata_totala}</td>
+                                <td className="text-right p-3">{cota.suma.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-3">Chiriaș</th>
+                      <th className="text-right p-3">
+                        {['GAZ', 'ENERGIE'].includes(factura.tip) ? 'Suprafață' : 'Nr. Persoane'}
+                      </th>
+                      <th className="text-right p-3">
+                        {['GAZ', 'ENERGIE'].includes(factura.tip) ? 'Total Suprafață' : 'Total Persoane'}
+                      </th>
+                      <th className="text-right p-3">Sumă</th>
                     </tr>
-                  ))}
-                  <tr className="font-semibold border-t">
-                    <td className="p-3">TOTAL</td>
-                    <td className="text-right p-3">100%</td>
-                    <td className="text-right p-3">{factura.suma.toFixed(2)} RON</td>
-                  </tr>
-                </tbody>
-              </table>
-			  
+                  </thead>
+                  <tbody>
+                    {coteParti.map((cota, index) => (
+                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
+                        <td className="p-3">{cota.chirias_nume}</td>
+                        <td className="text-right p-3">
+                          {cota.mod_calcul === 'suprafata' ? cota.suprafata : cota.numar_persoane}
+                        </td>
+                        <td className="text-right p-3">
+                          {cota.mod_calcul === 'suprafata' ? cota.suprafata_totala : cota.total_persoane}
+                        </td>
+                        <td className="text-right p-3">{cota.suma.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Total general */}
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span>{coteParti.reduce((sum, cp) => sum + cp.suma, 0).toFixed(2)} RON</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
