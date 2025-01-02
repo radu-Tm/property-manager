@@ -1,4 +1,9 @@
 // AddPropertyForm.jsx
+// Formular pentru adăugarea unei proprietăți noi
+// Funcționalități:
+// - Adăugare proprietate cu/fără clădire asociată
+// - Upload releveu
+// - Gestionare câmpuri condiționate de tipul proprietății
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -6,7 +11,7 @@ import { Button } from '../ui/button';
 import { useAuth } from '../../context/AuthContext';
 import { uploadData } from 'aws-amplify/storage';
 import { useNotification } from '../../hooks/useNotification';
-
+// Mutație pentru crearea proprietății
 const createProprietate = /* GraphQL */ `
   mutation CreateProprietate($input: CreateProprietateInput!, $email: String!) {
     createProprietate(input: $input, email: $email) {
@@ -26,7 +31,7 @@ const createProprietate = /* GraphQL */ `
     }
   }
 `;
-
+// Query pentru lista de clădiri
 const listCladiri = /* GraphQL */ `
   query ListCladiri($email: String!) {
     listCladiri(email: $email) {
@@ -39,12 +44,14 @@ const listCladiri = /* GraphQL */ `
 `;
 
 const AddPropertyForm = ({ onSuccess, onCancel }) => {
-	const { user } = useAuth();
+	// State-uri pentru gestionarea UI și date
+	const { user } = useAuth(); // Date utilizator curent
  const [showBuildingFields, setShowBuildingFields] = useState(false);
- const [cladiri, setCladiri] = useState([]);
+ const [cladiri, setCladiri] = useState([]); //lista cladirilor
  const [loading, setLoading] = useState(false);
  const [error, setError] = useState('');
  const { showSuccess, showError } = useNotification();
+ // State pentru datele formularului
  const [formData, setFormData] = useState({
    nume: '',
    tip: 'Apartament',
@@ -60,8 +67,10 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
    id_proprietar:''
  });
 
-
+//creează un client pentru interacțiunea cu API-ul GraphQL AWS AppSync
+//este configurat direct cu Endpoint-ul GraphQL definit în configurația Amplify, cu Credențialele și autentificarea necesare şi cu Headere-le necesare pentru request-uri
  const client = generateClient();
+  // Încarcă lista de clădiri la montare
  useEffect(() => {
    const fetchCladiri = async () => {
      try {
@@ -76,13 +85,16 @@ const AddPropertyForm = ({ onSuccess, onCancel }) => {
    };
    fetchCladiri();
  }, []);
+// Handlers pentru diferite acțiuni
 
  const handleCladireChange = (e) => {
+	 // ... logică pentru schimbarea clădirii
    const value = e.target.value;
    setFormData(prev => ({...prev, id_cladire: value}));
    setShowBuildingFields(!!value);
  };
 const handleReleuUpload = async (e) => {
+	// ... logică pentru upload releveu -> imagine
   const file = e.target.files[0];
   if (!file) return;
 
@@ -102,6 +114,7 @@ const handleReleuUpload = async (e) => {
   }
 };
 const handleImageUpload = async (e) => {
+	// ... logică pentru upload imagine (alte documente)
     const file = e.target.files[0];
     if (!file) return;
 
@@ -123,7 +136,10 @@ const handleImageUpload = async (e) => {
         showError('Eroare la încărcarea fișierului');
     }
 };
+
+// Handler principal pentru salvare
  const handleSubmit = async (e) => {
+	 //..logica salvare
    e.preventDefault();
    setLoading(true);
    setError('');

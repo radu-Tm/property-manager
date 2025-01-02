@@ -1,11 +1,20 @@
+// Formular pentru adăugarea unui chiriaș nou
+// Poate fi folosit ca:
+// - Formular independent
+// - Modal (când isModal=true)
+// Folosește React Hook Form pentru gestionarea formularului
+// Notificări pentru succes/eroare prin useNotification
 import React, { useState } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { useNotification } from '../../hooks/useNotification';
 
+//creează un client pentru interacțiunea cu API-ul GraphQL AWS AppSync
+//este configurat direct cu Endpoint-ul GraphQL definit în configurația Amplify, cu Credențialele și autentificarea necesare şi cu Headere-le necesare pentru request-uri
 const client = generateClient();
 
+// Mutația GraphQL pentru crearea unui chiriaș nou în baza de date
 const createChirias = /* GraphQL */ `
   mutation CreateChirias($input: CreateChiriasInput!) {
     createChirias(input: $input) {
@@ -23,6 +32,7 @@ const createChirias = /* GraphQL */ `
   }
 `;
 
+// State pentru datele formularului - toate câmpurile inițializate goale
 const AddChiriasForm = ({ onClose, onSuccess, isModal = false }) => {
   const [formData, setFormData] = useState({
     nume: '',
@@ -36,19 +46,24 @@ const AddChiriasForm = ({ onClose, onSuccess, isModal = false }) => {
     nota: ''
   });
 
+// State pentru loading în timpul salvării
   const [loading, setLoading] = useState(false);
+  
+// Hook pentru notificări UI
   const { showSuccess, showError } = useNotification();
 
+// Handler pentru salvarea chiriașului
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+// Trimite datele către backend		
       const result = await client.graphql({
         query: createChirias,
         variables: { input: formData }
       });
-
+// Notifică succesul și execută callback-ul de succes
       showSuccess('Chiriaș adăugat cu succes!');
       onSuccess(result.data.createChirias);
     } catch (error) {
@@ -58,7 +73,7 @@ const AddChiriasForm = ({ onClose, onSuccess, isModal = false }) => {
       setLoading(false);
     }
   };
-
+// Template-ul formularului - reutilizabil
   const FormContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -190,9 +205,10 @@ const AddChiriasForm = ({ onClose, onSuccess, isModal = false }) => {
       </div>
     </form>
   );
-
+// Render condiționat bazat pe prop-ul isModal
   if (isModal) {
     return (
+	// Randează formularul într-un modal
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
@@ -205,7 +221,7 @@ const AddChiriasForm = ({ onClose, onSuccess, isModal = false }) => {
       </div>
     );
   }
-
+// Altfel, returnează doar formularul
   return FormContent;
 };
 

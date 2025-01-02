@@ -1,3 +1,9 @@
+// Formular pentru adăugarea unui contract nou
+// Permite:
+// - Selectarea chiriașului existent sau adăugarea unuia nou
+// - Setarea detaliilor contractului (chirie, durată, etc.)
+// - Gestionarea contorului pentru energia electrică
+
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -5,9 +11,12 @@ import { Button } from '../ui/button';
 import { useNotification } from '../../hooks/useNotification';
 import AddChiriasForm from './AddChiriasForm';
 
+//creează un client pentru interacțiunea cu API-ul GraphQL AWS AppSync
+//este configurat direct cu Endpoint-ul GraphQL definit în configurația Amplify, cu Credențialele și autentificarea necesare şi cu Headere-le necesare pentru request-uri
+
 const client = generateClient();
 
-// Mutăm query-urile în afara componentei
+// Query pentru lista de chiriași existenți
 const listChiriasi = /* GraphQL */ `
   query ListChiriasi {
     listChiriasi {
@@ -20,6 +29,7 @@ const listChiriasi = /* GraphQL */ `
   }
 `;
 
+// Mutație pentru crearea contractului
 const createContract = /* GraphQL */ `
   mutation CreateContract($input: CreateContractInput!) {
     createContract(input: $input) {
@@ -42,6 +52,7 @@ const createContract = /* GraphQL */ `
   }
 `;
 
+// Mutație pentru adăugarea citirilor contor
 const createContorCitire = /* GraphQL */ `
   mutation CreateContorCitire($input: CreateContorCitireInput!) {
     createContorCitire(input: $input) {
@@ -56,15 +67,19 @@ const createContorCitire = /* GraphQL */ `
 `;
 
 const AddContractForm = ({ propertyId, onClose, onSuccess }) => {
-  // Toate hook-urile trebuie să fie aici la început
-  const [chiriasi, setChiriasi] = useState([]);
+// State-uri pentru gestionarea datelor
+// Toate hook-urile trebuie să fie aici la început
+  const [chiriasi, setChiriasi] = useState([]); // Lista chiriașilor
   const [loading, setLoading] = useState(false);
   const [showAddChirias, setShowAddChirias] = useState(false);
   const { showSuccess, showError } = useNotification();
+// Previne scroll-ul la săgeți în input-uri numerice
    const handleKeyDown = (event) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
    }}
+   
+    // State pentru datele formularului
 const [formData, setFormData] = useState({
   numar_contract: '',
   IDProprietate: propertyId, 
@@ -81,6 +96,7 @@ const [formData, setFormData] = useState({
   index_initial: '',
   Nota: ''
 });
+ // Încarcă lista de chiriași la montarea componentei
   useEffect(() => {
     fetchChiriasi();
   }, []);
@@ -97,12 +113,14 @@ const [formData, setFormData] = useState({
     }
   };
 
-
+// Handler pentru salvarea contractului
 const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
   try {
-    // Eliminăm index_initial din input pentru contract
+     // ... logica de salvare
+	// Eliminăm index_initial din input pentru contract
+	//index_initial este folosit doar pentru ContoareChiriasi, e folosit prin JOIN, nu face parte din tabelul Contracte asa ca-l dam afară
     const { index_initial, ...contractInput } = formData;
   
 	const { DataSfarsit, ...input } = {

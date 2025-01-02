@@ -1,3 +1,9 @@
+// Formular pentru editarea unui contract existent
+// Permite modificarea:
+// - Detaliilor contractului
+// - Chiriașului asociat
+// - Setărilor de contor
+
 import React, { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -5,9 +11,11 @@ import { Button } from '../ui/button';
 import { useNotification } from '../../hooks/useNotification';
 import AddChiriasForm from './AddChiriasForm';
 
-
+//creează un client pentru interacțiunea cu API-ul GraphQL AWS AppSync
+//este configurat direct cu Endpoint-ul GraphQL definit în configurația Amplify, cu Credențialele și autentificarea necesare şi cu Headere-le necesare pentru request-uri
 const client = generateClient();
 
+// Queries și mutații necesare
 const listChiriasi = /* GraphQL */ `
   query ListChiriasi {
     listChiriasi {
@@ -53,9 +61,11 @@ const updateContorCitire = /* GraphQL */ `
   }
 `;
 
+// State-uri pentru gestionarea datelor
 const EditContractForm = ({ contract, onClose, onSuccess }) => {
 	
 	  useEffect(() => {
+		  //dezactivare sageti cand esti pe input numeric in formular
     const handleKeyDown = (event) => {
       const target = event.target;
       if (target.tagName === 'INPUT' && target.type === 'number' &&
